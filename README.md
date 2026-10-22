@@ -74,4 +74,12 @@ Run the Python tests with `python3 -m unittest discover -v`.
 
 The verifier must supply the expected application, site, session, and action from its own server-side context. `verify_and_consume` checks the HMAC-SHA256 signature, claim bindings, issue and expiry times, then atomically consumes the nonce. A token is accepted once. The default in-memory nonce store is safe for concurrent requests in one process; deployments with multiple processes or hosts must inject a shared store with an atomic `consume_once` operation.
 
+## History/profile v0
+
+`src/cognit/history-profile-engine.ts` accepts an application ID and a pseudonym generated and supplied by that application. It keeps only recent session activity timestamps and optional `succeeded`/`failed` result categories, so applications can use prior outcomes as context. The engine does not generate pseudonyms, accept raw telemetry or personal attributes, persist data, or connect pseudonyms across applications. A pseudonym is not anonymization.
+
+History is held in memory for up to 30 days by default and at most 10 recent sessions per app/pseudonym pair. Both limits can be configured. The origin is the caller application; the purpose is to summarize recent activity and outcomes within that application's scope. `getProfile` returns `undefined` when no retained history is available. Consumers must treat that as unavailable context, not as a risk signal or evidence of suspicious behavior. The engine does not integrate with or change risk scoring.
+
+Applications opt out with `optOut(appId, pseudonym)`, which deletes the profile currently held by the engine. Since the application owns consent and the pseudonym, it must also stop calling `recordSession` for that pseudonym after opt-out. This v0 does not persist data across process restarts or coordinate deletion of copies held elsewhere.
+
 Tokens expire after 60 seconds by default; the configured lifetime can be at most five minutes. Run the Python tests with `python3 -m unittest discover -v`.
