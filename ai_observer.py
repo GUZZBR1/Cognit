@@ -34,6 +34,12 @@ def _digest(value: Any) -> str:
 def _validate_finite_json(value: Any, path: str = "input") -> None:
     if isinstance(value, float) and not math.isfinite(value):
         raise ValueError(f"{path} contains a non-finite number")
+    if isinstance(value, int) and not isinstance(value, bool):
+        try:
+            if not math.isfinite(float(value)):
+                raise ValueError(f"{path} contains a non-finite number")
+        except OverflowError as error:
+            raise ValueError(f"{path} contains a number outside the supported range") from error
     if isinstance(value, Mapping):
         for key, child in value.items():
             if not isinstance(key, str):
@@ -61,7 +67,7 @@ def _flatten_signals(record: Mapping[str, Any]) -> tuple[dict[str, Any], int]:
             elif value is None:
                 ignored += 1
             elif isinstance(value, (str, bool, int, float)):
-                flattened[f"{group}.{field}"] = value
+                flattened[_canonical_json([group, field])] = value
             else:
                 # Raw trajectories and other nested/high-cardinality payloads
                 # are outside this minimized format and are never traversed.
@@ -94,6 +100,32 @@ def analyze_dataset(dataset: Mapping[str, Any]) -> dict[str, Any]:
         raise ValueError("records must be an array")
     if any(not isinstance(record, Mapping) for record in records):
         raise ValueError("each record must be an object")
+
+    positive_class = dataset.get("positive_class")
+    if positive_class is not None and (not isinstance(positive_class, str) or not positive_class.strip()):
+        raise ValueError("positive_class must be a non-empty string when provided")
+    reviewed_comparisons: list[tuple[str, str]] = []
+    for index, record in enumerate(records):
+        evaluation = record.get("evaluation")
+        if evaluation is None:
+            continue
+        if not isinstance(evaluation, Mapping) or set(evaluation) != {
+            "prediction", "reviewed_outcome", "review_provenance"
+        }:
+            raise ValueError(f"records[{index}].evaluation has an invalid shape")
+        prediction = evaluation["prediction"]
+        reviewed_outcome = evaluation["reviewed_outcome"]
+        if prediction not in ("positive", "negative") or reviewed_outcome not in ("positive", "negative"):
+            raise ValueError(f"records[{index}].evaluation outcomes must be positive or negative")
+        provenance = evaluation["review_provenance"]
+        if not isinstance(provenance, Mapping) or set(provenance) != {"method", "origin", "procedure"}:
+            raise ValueError(f"records[{index}].evaluation requires review provenance")
+        if any(not isinstance(provenance[key], str) or not provenance[key].strip()
+               for key in ("method", "origin", "procedure")):
+            raise ValueError(f"records[{index}].evaluation review provenance fields must be non-empty strings")
+        reviewed_comparisons.append((prediction, reviewed_outcome))
+    if reviewed_comparisons and (not isinstance(positive_class, str) or not positive_class.strip()):
+        raise ValueError("positive_class is required when reviewed evaluations are provided")
 
     flattened_records: list[dict[str, Any]] = []
     ignored_values = 0
@@ -193,6 +225,39 @@ def analyze_dataset(dataset: Mapping[str, Any]) -> dict[str, Any]:
             "conclusion": None,
         })
 
+    potential_false_positives = sum(
+        prediction == "positive" and reviewed == "negative"
+        for prediction, reviewed in reviewed_comparisons
+    )
+    potential_false_negatives = sum(
+        prediction == "negative" and reviewed == "positive"
+        for prediction, reviewed in reviewed_comparisons
+    )
+    if potential_false_positives:
+        observations.append({
+            "kind": "potential_false_positive_candidate",
+            "field": None,
+            "observation": "Some positive predictions differ from independently reviewed negative outcomes.",
+            "evidence": {
+                "positive_class": positive_class,
+                "candidate_count": potential_false_positives,
+                "reviewed_comparison_count": len(reviewed_comparisons),
+            },
+            "conclusion": None,
+        })
+    if potential_false_negatives:
+        observations.append({
+            "kind": "potential_false_negative_candidate",
+            "field": None,
+            "observation": "Some negative predictions differ from independently reviewed positive outcomes.",
+            "evidence": {
+                "positive_class": positive_class,
+                "candidate_count": potential_false_negatives,
+                "reviewed_comparison_count": len(reviewed_comparisons),
+            },
+            "conclusion": None,
+        })
+
     record_count = len(records)
     usable_records = sum(bool(record) for record in flattened_records)
     sufficient = record_count >= MIN_RECORDS and usable_records >= MIN_RECORDS
@@ -228,6 +293,10 @@ def analyze_dataset(dataset: Mapping[str, Any]) -> dict[str, Any]:
             "configuration_sha256": _digest(config),
             "record_count": record_count,
             "records_with_usable_signals": usable_records,
+        "reviewed_comparison_count": len(reviewed_comparisons),
+        "unreviewed_record_count": record_count - len(reviewed_comparisons),
+        "potential_false_positive_count": potential_false_positives,
+        "potential_false_negative_count": potential_false_negatives,
             "ignored_or_missing_values": ignored_values,
         },
         "field_summaries": field_summaries,
@@ -237,7 +306,8 @@ def analyze_dataset(dataset: Mapping[str, Any]) -> dict[str, Any]:
             "Observations describe aggregates in this export; they do not establish intent, identity, or causal patterns.",
             "Fingerprints and provenance use plain SHA-256; digests correlate values but do not provide anonymization or resist guessing for low-entropy inputs.",
             "Singleton and numeric outlier candidates depend on this dataset and the configured deterministic thresholds.",
-            "False-positive and false-negative labels are not inferred. Assessing them requires separately sourced, independently reviewed labels with provenance.",
+            "Potential false-positive and false-negative counts compare supplied predictions with independently reviewed reference outcomes; those outcomes are not ground truth and remain subject to human interpretation.",
+            "No false-positive or false-negative candidates can be counted without externally supplied review outcomes and their provenance.",
             "Missing signals may reflect omission, collection limits, or unavailable telemetry; they are not evidence of absence.",
         ],
     }

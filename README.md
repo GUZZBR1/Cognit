@@ -96,7 +96,8 @@ identifier. Each record should contain only minimized signal summaries:
 
 Signal groups contain scalar string, boolean, or numeric fields. Null, missing,
 and nested values (including raw trajectories) are not analyzed; their aggregate
-count is reported. The report includes per-field aggregate summaries, repeated
+count is reported. Report field names encode the group and field as a JSON pair
+to keep dotted names distinct. The report includes per-field aggregate summaries, repeated
 and singleton categorical fingerprint counts, and numeric candidates outside
 the dataset's 1.5×IQR fences. Fingerprints and categorical value summaries use
 SHA-256 digests so raw categorical values are not copied into the report. These
@@ -106,14 +107,22 @@ The output also records the source identifier, canonical input hash, observer
 version, configuration, and configuration hash. Identical input and code
 version produce a deterministic report.
 
+To compare possible false-positive/negative candidates, include `positive_class`
+at the dataset level and an optional `evaluation` on reviewed records. Each
+evaluation must provide `prediction` and `reviewed_outcome` (`positive` or
+`negative`) plus `review_provenance` with non-empty `method`, `origin`, and
+`procedure` fields. The report exposes only aggregate candidate counts; it does
+not copy these per-record labels or provenance into the output.
+
 Observations are separate from conclusions; conclusions are always empty.
 Outliers and unusual fingerprints are review candidates, not evidence of
 automation, malicious intent, or model error. Small or unusable datasets are
 marked `insufficient_data`. Missing signals can reflect omission or collection
-limits. The observer does not infer false positives or false negatives. Those
-assessments need labels supplied and independently reviewed outside this tool,
-with their own provenance. Do not use observer output as ground truth or to
-change live policy or decisions.
+limits. False-positive/negative counts identify disagreements with externally
+supplied, independently reviewed reference outcomes; those outcomes are not
+ground truth, and the counts still need human interpretation. Without reviewed
+comparisons, the report marks that no candidates can be counted. Do not use
+observer output as ground truth or to change live policy or decisions.
 
 Run its tests with `python3 -m unittest test_ai_observer -v` or run the full
 Python suite with `python3 -m unittest discover -v`.

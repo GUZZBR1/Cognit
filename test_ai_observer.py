@@ -1,4 +1,9 @@
 import copy
+import json
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
 import unittest
 
 from ai_observer import analyze_dataset
@@ -30,7 +35,8 @@ class AiObserverTests(unittest.TestCase):
         self.assertIn("numeric_outlier_candidate", kinds)
         self.assertTrue(all(item["conclusion"] is None for item in first["observations"]))
         self.assertEqual(first["conclusions"], [])
-        self.assertEqual(first["field_summaries"]["mouse.duration_ms"]["numeric"]["outlier_count_iqr_1_5"], 1)
+        field_key = '["mouse","duration_ms"]'
+        self.assertEqual(first["field_summaries"][field_key]["numeric"]["outlier_count_iqr_1_5"], 1)
         serialized = str(first)
         self.assertNotIn('"webdriver": False', serialized)
         self.assertNotIn('"webdriver": True', serialized)
@@ -47,6 +53,44 @@ class AiObserverTests(unittest.TestCase):
 
         self.assertEqual(dataset, original)
 
+    def test_cli_reads_source_without_modifying_it_and_writes_report_to_stdout(self):
+        dataset = {
+            "schema_version": 1,
+            "source_id": "offline-fixture",
+            "records": [{"signals": {"timing": {"response_ms": value}}} for value in (10, 11, 12, 13)],
+        }
+        source = Path(__file__).with_name("ai_observer.py")
+        with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as temp_dir:
+            input_path = Path(temp_dir) / "minimized.json"
+            original = json.dumps(dataset).encode("utf-8")
+            input_path.write_bytes(original)
+
+            result = subprocess.run(
+                [sys.executable, str(source), str(input_path)],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(input_path.read_bytes(), original)
+            self.assertEqual(json.loads(result.stdout)["status"], "analyzed")
+
+    def test_dotted_group_and_field_names_do_not_collide(self):
+        dataset = {
+            "schema_version": 1,
+            "source_id": "fixture",
+            "records": [
+                {"signals": {"a.b": {"c": 1}, "a": {"b.c": 10}}}
+                for _ in range(4)
+            ],
+        }
+
+        report = analyze_dataset(dataset)
+
+        self.assertEqual(report["field_summaries"]['["a.b","c"]']["numeric"]["mean"], 1)
+        self.assertEqual(report["field_summaries"]['["a","b.c"]']["numeric"]["mean"], 10)
+
     def test_sparse_or_empty_data_is_explicitly_insufficient(self):
         report = analyze_dataset({"schema_version": 1, "source_id": "empty-fixture", "records": []})
         self.assertEqual(report["status"], "insufficient_data")
@@ -58,6 +102,7 @@ class AiObserverTests(unittest.TestCase):
             {"schema_version": 1, "records": []},
             {"schema_version": 2, "source_id": "fixture", "records": []},
             {"schema_version": 1, "source_id": "fixture", "records": [{"signals": {"timing": {"x": float("nan")}}}]},
+            {"schema_version": 1, "source_id": "fixture", "records": [{"signals": {"timing": {"x": 10**10000}}}]},
         ):
             with self.subTest(dataset=dataset), self.assertRaises(ValueError):
                 analyze_dataset(dataset)
@@ -69,7 +114,49 @@ class AiObserverTests(unittest.TestCase):
             "records": [{"signals": {"browser": {"indicator": value}}} for value in (True, False, True, False)],
         })
         self.assertEqual(report["conclusions"], [])
-        self.assertTrue(any("False-positive and false-negative labels are not inferred" in item for item in report["limitations"]))
+        self.assertEqual(report["provenance"]["reviewed_comparison_count"], 0)
+        self.assertEqual(report["provenance"]["potential_false_positive_count"], 0)
+        self.assertEqual(report["provenance"]["potential_false_negative_count"], 0)
+
+    def test_reports_aggregated_false_positive_and_negative_review_candidates(self):
+        provenance = {"method": "manual review", "origin": "study review", "procedure": "protocol v1"}
+        dataset = {
+            "schema_version": 1,
+            "source_id": "reviewed-export",
+            "positive_class": "automation_indicator",
+            "records": [
+                {"signals": {"browser": {"webdriver": True}}, "evaluation": {
+                    "prediction": "positive", "reviewed_outcome": "negative", "review_provenance": provenance,
+                }},
+                {"signals": {"browser": {"webdriver": False}}, "evaluation": {
+                    "prediction": "negative", "reviewed_outcome": "positive", "review_provenance": provenance,
+                }},
+            ],
+        }
+
+        report = analyze_dataset(dataset)
+
+        kinds = {item["kind"] for item in report["observations"]}
+        self.assertIn("potential_false_positive_candidate", kinds)
+        self.assertIn("potential_false_negative_candidate", kinds)
+        self.assertEqual(report["provenance"]["potential_false_positive_count"], 1)
+        self.assertEqual(report["provenance"]["potential_false_negative_count"], 1)
+        self.assertNotIn("manual review", json.dumps(report))
+        self.assertTrue(all(item["conclusion"] is None for item in report["observations"]))
+
+    def test_review_comparisons_require_positive_class_and_complete_provenance(self):
+        record = {"evaluation": {
+            "prediction": "positive", "reviewed_outcome": "negative",
+            "review_provenance": {"method": "manual", "origin": "review", "procedure": "v1"},
+        }}
+        for dataset in (
+            {"schema_version": 1, "source_id": "fixture", "records": [record]},
+            {"schema_version": 1, "source_id": "fixture", "positive_class": "automation", "records": [{
+                "evaluation": {**record["evaluation"], "review_provenance": {"method": "manual"}}
+            }]},
+        ):
+            with self.subTest(dataset=dataset), self.assertRaises(ValueError):
+                analyze_dataset(dataset)
 
 
 if __name__ == "__main__":
