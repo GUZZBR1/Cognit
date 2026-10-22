@@ -225,3 +225,8 @@ Each completed attempt produces one JSON object:
 
 Fixed challenges and expected answers are authored in `src/fixed-challenges.js`. The deterministic seed-based generator is an independent API in `src/seeded-generator.js`; the fixed runner does not call it. There is no adaptive generation, person classification, or production threshold.
 
+## Verification API v0 contract
+
+The [OpenAPI 3.1 contract](docs/api/verification-v0.yaml) specifies five application-facing operations: create a session, request a challenge, submit a result, verify a session, and validate a token. It is a versioned integration contract, not a hosted Cognit service. [The stdlib mock](examples/verification_api_mock.py) demonstrates all five HTTP calls locally: `python3 examples/verification_api_mock.py --demo`.
+
+Applications authenticate server-to-server with a bearer API key over TLS. Keep credentials and signing secrets on the server; bind each key to one application, and resolve every session and record inside that authenticated application's namespace. A deployment should enforce per-application rate limits, return `429` with `Retry-After`, and avoid logging credentials, tokens, submitted answers, or raw telemetry. Retain only operational identifiers and outcome data needed for debugging and audit, with short retention. Limits and retention periods are deployment policy; this contract does not prescribe production values.

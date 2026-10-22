@@ -1,0 +1,271 @@
+openapi: 3.1.0
+info:
+  title: Cognit Verification API
+  version: 0.1.0
+  description: >-
+    Minimal reference contract for application-integrated verification. This
+    specification defines the HTTP boundary; it does not imply a hosted service.
+servers:
+  - url: https://verification.example.invalid/v0
+    description: Placeholder; replace with the deployment URL.
+security:
+  - ApplicationKey: []
+paths:
+  /sessions:
+    post:
+      operationId: createSession
+      summary: Create a verification session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionRequest'
+      responses:
+        '201':
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /sessions/{session_id}/challenge:
+    post:
+      operationId: requestChallenge
+      summary: Request a challenge for a session
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChallengeRequest'
+      responses:
+        '200':
+          description: Public challenge presentation data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Challenge'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /sessions/{session_id}/result:
+    post:
+      operationId: submitResult
+      summary: Submit an answer to the current challenge
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitResultRequest'
+      responses:
+        '200':
+          description: Result recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Result'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /sessions/{session_id}/verify:
+    post:
+      operationId: verifySession
+      summary: Retrieve the server-side session verification state
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: Verification state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Verification'
+        '401':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /tokens/validate:
+    post:
+      operationId: validateToken
+      summary: Validate and consume a single-use verification token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidateTokenRequest'
+      responses:
+        '200':
+          description: Token validated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenValidation'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+components:
+  securitySchemes:
+    ApplicationKey:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque API key
+      description: >-
+        Server-to-server application credential. Store it as a secret, send
+        only over TLS, and associate each credential with exactly one app.
+  parameters:
+    SessionId:
+      name: session_id
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+  responses:
+    Error:
+      description: Request rejected
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    RateLimited:
+      description: Request quota exceeded; retry after the supplied delay
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    CreateSessionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        site_id:
+          type: string
+          minLength: 1
+        ttl_seconds:
+          type: integer
+          minimum: 1
+          maximum: 1800
+          default: 600
+      required: [site_id]
+    Session:
+      type: object
+      additionalProperties: false
+      properties:
+        session_id: { type: string, minLength: 1 }
+        state: { type: string, enum: [active, expired] }
+        attempt_state: { type: string, enum: [pending, succeeded, failed] }
+        expires_at: { type: string, format: date-time }
+      required: [session_id, state, attempt_state, expires_at]
+    ChallengeRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        challenge_type: { type: string, minLength: 1 }
+      required: [challenge_type]
+    Challenge:
+      type: object
+      additionalProperties: false
+      properties:
+        challenge_id: { type: string, minLength: 1 }
+        stimulus: { type: string }
+        question: { type: string }
+        choices:
+          type: array
+          minItems: 2
+          items: { type: string }
+        order:
+          type: array
+          items: { type: string }
+        duration_ms: { type: integer, minimum: 1 }
+        expires_at: { type: string, format: date-time }
+      required: [challenge_id, stimulus, question, choices, order, duration_ms, expires_at]
+    SubmitResultRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        challenge_id: { type: string, minLength: 1 }
+        answer: { type: string, minLength: 1 }
+        reaction_time_ms: { type: integer, minimum: 0 }
+      required: [challenge_id, answer]
+    Result:
+      type: object
+      additionalProperties: false
+      properties:
+        result_id: { type: string, minLength: 1 }
+        accepted: { type: boolean }
+        state: { type: string, enum: [pending, succeeded, failed] }
+      required: [result_id, accepted, state]
+    Verification:
+      type: object
+      additionalProperties: false
+      properties:
+        session_id: { type: string }
+        state: { type: string, enum: [active, expired] }
+        attempt_state: { type: string, enum: [pending, succeeded, failed] }
+      required: [session_id, state, attempt_state]
+    ValidateTokenRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        token: { type: string, minLength: 1 }
+        site_id: { type: string, minLength: 1 }
+        session_id: { type: string, minLength: 1 }
+        action: { type: string, minLength: 1 }
+      required: [token, site_id, session_id, action]
+    TokenValidation:
+      type: object
+      additionalProperties: false
+      properties:
+        valid: { type: boolean, const: true }
+        action: { type: string }
+        expires_at: { type: string, format: date-time }
+      required: [valid, action, expires_at]
+    Error:
+      type: object
+      additionalProperties: false
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          properties:
+            code:
+              type: string
+              enum: [invalid_request, unauthorized, not_found, expired, invalid_token, rate_limited]
+            message: { type: string }
+            request_id: { type: string }
+          required: [code, message]
+      required: [error]
