@@ -60,6 +60,14 @@ Signals include `navigator.webdriver`, known Playwright/Selenium/Puppeteer globa
 
 The test suite uses simulated browser environments. It validates the result structure and cautious interpretation, not real browser runs of each automation framework.
 
+## Attack Lab browser runners
+
+With Node.js 22.12 or newer and Python 3 installed, install the development dependencies with `npm install`, then run `npm run attack-lab:selenium` and `npm run attack-lab:puppeteer`. Both runners serve Cognit locally and execute the same three authored challenges from `src/fixed-challenges.js` at a 50 ms display duration. Puppeteer uses its downloaded Chrome; Selenium uses Chrome available on the system (Selenium Manager resolves the driver, and `CHROME_BIN` can select a non-default Chrome binary).
+
+Each command writes a JSON run document under `attack-lab/` by default. An optional first argument selects another output path, for example `npm run attack-lab:selenium -- attack-lab/selenium.json`. The document uses the Playwright runner's `schema_version`, `session_id`, `started_at`, `source`, and `attempts` envelope. Each attempt carries the same challenge/stimulus IDs, duration, `mouse_telemetry`, `ground_truth.expected_answer`, and `observed_result` fields, plus framework/browser metadata and browser feature observations. Mouse telemetry uses Cognit's shared aggregator. Both runners validate each observed Cognit result against the authored answer before writing the file.
+
+The document envelope matches Playwright exactly; each attempt extends its row shape with tool/version and feature metadata for direct scenario-level comparison.
+
 ## Server-side decision policy
 
 `decision_policy.py` maps a numeric risk score and confidence to a decision using a caller-supplied policy. It does not set production thresholds or make claims about identity or intent. A policy consists of ordered `PolicyRule` score bands (inclusive endpoints), a minimum confidence, and optional signal keys that must be present. The first matching rule wins. Configure bands for `ALLOW`, `CHALLENGE`, `RESTRICT`, `BLOCK`, or `UNKNOWN`; unmatched or insufficient evidence returns `UNKNOWN`.
