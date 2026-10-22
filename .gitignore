@@ -1,0 +1,22 @@
+# Node.js dependencies and generated test reports
+node_modules/
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+# Python bytecode, virtual environments, and test caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Operating system metadata
+.DS_Store
+Thumbs.db
