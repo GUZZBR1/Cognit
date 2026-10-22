@@ -11,6 +11,7 @@ let answerStartedAt;
 let activeResult;
 let activeChallenge;
 let activeDurationMs;
+let activePresentation;
 let recordAttempt = createAttemptRecorder();
 let hideTimer;
 
@@ -45,30 +46,70 @@ function renderTiles(challenge) {
   }
 }
 
+const tileDescriptions = {
+  "blue-circle": "blue circle",
+  "coral-square": "coral square",
+  "gold-triangle": "gold triangle",
+  star: "star",
+  heart: "heart",
+  moon: "moon",
+  green: "green",
+  violet: "violet",
+  gold: "gold"
+};
+
+function renderAccessiblePattern(challenge) {
+  const list = $("accessible-stimulus");
+  list.replaceChildren();
+  for (const tile of challenge.tiles) {
+    const item = document.createElement("li");
+    item.textContent = tileDescriptions[tile];
+    list.append(item);
+  }
+}
+
+$("presentation").addEventListener("change", () => {
+  $("duration-setting").hidden = $("presentation").value === "text";
+});
+
 $("start").addEventListener("click", () => {
   clearTimeout(hideTimer);
   activeChallenge = fixedChallenges[Number(challengeSelect.value)];
-  activeDurationMs = Number($("duration").value);
+  activePresentation = $("presentation").value;
+  activeDurationMs = activePresentation === "visual" ? Number($("duration").value) : null;
   recordAttempt = createAttemptRecorder();
   resultArea.hidden = true;
   area.hidden = false;
   $("prompt-title").textContent = activeChallenge.title;
-  $("instruction").textContent = activeChallenge.instruction;
+  $("instruction").textContent = activePresentation === "visual"
+    ? activeChallenge.instruction
+    : "Read the pattern sequence in order. Count the requested item, then enter your answer. There is no time limit.";
   $("answer-label").textContent = activeChallenge.answer_label;
-  $("status").textContent = "Pattern is shown briefly.";
   form.hidden = true;
   answer.value = "";
   answer.disabled = false;
   form.querySelector('button[type="submit"]').disabled = false;
-  renderTiles(activeChallenge);
-  stimulus.hidden = false;
-  hideTimer = setTimeout(() => {
+  if (activePresentation === "text") {
     stimulus.hidden = true;
+    renderAccessiblePattern(activeChallenge);
+    $("accessible-stimulus").hidden = false;
     form.hidden = false;
-    $("status").textContent = "The pattern is hidden. Submit your answer when ready.";
-    answerStartedAt = performance.now();
-    answer.focus();
-  }, activeDurationMs);
+    $("status").textContent = "The accessible pattern is ready. Read the sequence and submit your answer when ready.";
+    answerStartedAt = undefined;
+    $("prompt-title").focus();
+  } else {
+    $("accessible-stimulus").hidden = true;
+    renderTiles(activeChallenge);
+    stimulus.hidden = false;
+    $("status").textContent = "Pattern is shown briefly.";
+    hideTimer = setTimeout(() => {
+      stimulus.hidden = true;
+      form.hidden = false;
+      $("status").textContent = "The pattern is hidden. Submit your answer when ready.";
+      answerStartedAt = performance.now();
+      answer.focus();
+    }, activeDurationMs);
+  }
 });
 
 form.addEventListener("submit", (event) => {
@@ -78,7 +119,7 @@ form.addEventListener("submit", (event) => {
     challenge: activeChallenge,
     duration_ms: activeDurationMs,
     response: answer.value,
-    reaction_time_ms: performance.now() - answerStartedAt
+    reaction_time_ms: activePresentation === "visual" ? performance.now() - answerStartedAt : null
   }));
   if (!result) return;
   activeResult = result;

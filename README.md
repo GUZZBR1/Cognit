@@ -2,7 +2,7 @@
 
 ## Perceptual challenge
 
-A small, client-only perception challenge. Choose an authored pattern and display duration, study it, then answer after it disappears. The result is shown on screen and can be downloaded as JSON.
+A small, client-only perception challenge. Choose an authored pattern and either a timed visual or untimed text presentation, then answer. The result is shown on screen and can be downloaded as JSON.
 
 Serve this directory with any static HTTP server and open `index.html`. For example:
 
@@ -25,7 +25,7 @@ Each completed attempt produces one JSON object:
 }
 ```
 
-`duration_ms` is the selected exposure duration. `reaction_time_ms` is measured with the browser's monotonic `performance.now()` clock from when the answer prompt becomes available until submission. Browser timers can drift, so this is a lightweight demonstration and not a lab-precision measurement.
+`duration_ms` is the selected exposure duration. `reaction_time_ms` is measured with the browser's monotonic `performance.now()` clock from when the answer prompt becomes available until submission. They are `null` for the untimed text presentation. Browser timers can drift, so this is a lightweight demonstration and not a lab-precision measurement. Both presentations use the same challenge, response, and correctness check; the presentation choice is not part of the result.
 
 Fixed challenges and expected answers are authored in `src/fixed-challenges.js`. The deterministic seed-based generator is an independent API in `src/seeded-generator.js`; the fixed runner does not call it. There is no adaptive generation, person classification, or production threshold.
 
