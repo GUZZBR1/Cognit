@@ -25,7 +25,13 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px s
 .answer-row { display: flex; align-items: end; gap: .75rem; }
 .answer-row button { flex: 0 0 auto; }
 .status { min-height: 1.5rem; color: #4d5870; }
+.dashboard-period, .dashboard-note { color: #4d5870; font-size: .9rem; }
+.metrics-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; margin: 1rem 0; }
+.metric-card { min-width: 0; padding: 1rem; border: 1px solid #e1e5ed; border-radius: .7rem; }
+.metric-card dt { color: #4d5870; font-size: .85rem; font-weight: 700; }
+.metric-card dd { margin: .4rem 0; font-size: 1.1rem; font-weight: 750; }
+.metric-card small { display: block; color: #4d5870; line-height: 1.4; }
 pre { overflow-x: auto; padding: 1rem; border-radius: .5rem; background: #f1f3f8; font-size: .85rem; }
 #download { background: #276b55; }
 [hidden] { display: none !important; }
-@media (max-width: 28rem) { body { padding-top: 1.5rem; } .panel { padding: 1rem; } .answer-row { display: block; } .answer-row button { width: 100%; } }
+@media (max-width: 28rem) { body { padding-top: 1.5rem; } .panel { padding: 1rem; } .answer-row { display: block; } .answer-row button { width: 100%; } .metrics-grid { grid-template-columns: 1fr; } }

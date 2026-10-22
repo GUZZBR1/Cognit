@@ -75,3 +75,7 @@ Run the Python tests with `python3 -m unittest discover -v`.
 The verifier must supply the expected application, site, session, and action from its own server-side context. `verify_and_consume` checks the HMAC-SHA256 signature, claim bindings, issue and expiry times, then atomically consumes the nonce. A token is accepted once. The default in-memory nonce store is safe for concurrent requests in one process; deployments with multiple processes or hosts must inject a shared store with an atomic `consume_once` operation.
 
 Tokens expire after 60 seconds by default; the configured lifetime can be at most five minutes. Run the Python tests with `python3 -m unittest discover -v`.
+
+## Operational dashboard
+
+The dashboard aggregates completed challenge attempts during the current page visit. Its source and period are shown with the count. Decision rates, risk distribution, service latency percentiles, false-positive estimates, and model/rule versions are marked unavailable because this client-only prototype has no connected operational event, latency, audited ground-truth, or active model/rule source. Participant response time is not service latency. The dashboard exposes aggregate counts only and does not show individual attempt records.

@@ -1,4 +1,5 @@
 import { fixedChallenges, createResult, createAttemptRecorder } from "./fixed-challenges.js";
+import { createOperationalMetrics } from "./operational-metrics.js";
 
 const $ = (id) => document.getElementById(id);
 const challengeSelect = $("challenge");
@@ -13,6 +14,15 @@ let activeChallenge;
 let activeDurationMs;
 let recordAttempt = createAttemptRecorder();
 let hideTimer;
+const operationalMetrics = createOperationalMetrics();
+const dashboardStart = new Date(operationalMetrics.snapshot().periodStart);
+$("dashboard-start").dateTime = dashboardStart.toISOString();
+$("dashboard-start").textContent = dashboardStart.toLocaleString();
+
+function renderOperationalMetrics() {
+  const { completedAttempts } = operationalMetrics.snapshot();
+  $("metric-traffic").textContent = `${completedAttempts} completed ${completedAttempts === 1 ? "attempt" : "attempts"}`;
+}
 
 for (const [index, challenge] of fixedChallenges.entries()) {
   const option = document.createElement("option");
@@ -81,6 +91,8 @@ form.addEventListener("submit", (event) => {
     reaction_time_ms: performance.now() - answerStartedAt
   }));
   if (!result) return;
+  operationalMetrics.recordCompletedAttempt();
+  renderOperationalMetrics();
   activeResult = result;
   answer.disabled = true;
   form.querySelector('button[type="submit"]').disabled = true;

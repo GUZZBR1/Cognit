@@ -50,6 +50,44 @@
         <pre><code id="result-json"></code></pre>
         <button id="download" type="button">Download JSON</button>
       </section>
+
+      <section id="operations-dashboard" class="panel" aria-labelledby="dashboard-title">
+        <h2 id="dashboard-title">Operational metrics</h2>
+        <p class="dashboard-period">Period: this page visit, since <time id="dashboard-start"></time>.</p>
+        <dl class="metrics-grid">
+          <div class="metric-card">
+            <dt>Traffic</dt>
+            <dd id="metric-traffic">0 completed attempts</dd>
+            <small>Source: completed challenges in this browser page.</small>
+          </div>
+          <div class="metric-card">
+            <dt>Pass / challenge / block rates</dt>
+            <dd>Unavailable</dd>
+            <small>Source unavailable: this app does not emit operational decisions.</small>
+          </div>
+          <div class="metric-card">
+            <dt>Risk distribution</dt>
+            <dd>Unavailable</dd>
+            <small>Source unavailable: no risk scores are collected.</small>
+          </div>
+          <div class="metric-card">
+            <dt>Service latency (p50 / p95)</dt>
+            <dd>Unavailable</dd>
+            <small>Source unavailable: response time measures the participant, not service latency.</small>
+          </div>
+          <div class="metric-card">
+            <dt>False-positive estimate</dt>
+            <dd>Unavailable</dd>
+            <small>Source unavailable: no audited decision and ground-truth records are connected.</small>
+          </div>
+          <div class="metric-card">
+            <dt>Model / rule version</dt>
+            <dd>Unavailable</dd>
+            <small>Source unavailable: this page has no active model or decision rule.</small>
+          </div>
+        </dl>
+        <p class="dashboard-note">Only aggregate counts are shown. Individual attempt records are not included in this dashboard.</p>
+      </section>
     </main>
   </body>
 </html>
