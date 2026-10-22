@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Teste local experimental — Cognit</title>
+  <style>
+    :root { color-scheme: light; font: 16px/1.5 system-ui, sans-serif; }
+    body { max-width: 48rem; margin: 3rem auto; padding: 0 1rem; color: #20242a; }
+    h1 { line-height: 1.2; }
+    .notice { padding: 1rem; border-left: 4px solid #bd6b21; background: #fff5e9; }
+    .controls { display: flex; gap: .75rem; margin: 1.5rem 0; }
+    button { padding: .65rem 1rem; font: inherit; }
+    #test-area { position: relative; min-height: 13rem; border: 1px dashed #89919b; background: #f5f6f7; }
+    #test-area p { padding: 1rem; color: #626a73; }
+    #target {
+      display: none; position: absolute; right: 1rem; bottom: 1rem;
+      width: 9rem; height: 5rem; border: 1px solid #b4bbc2;
+      border-radius: .5rem; background: #e4e8eb; opacity: .65;
+      cursor: pointer; touch-action: manipulation;
+    }
+    #target::after { content: "alvo experimental"; display: grid; height: 100%; place-items: center; color: #58616a; font-size: .8rem; }
+    #result { min-height: 3rem; padding: .75rem; background: #f1f3f5; white-space: pre-wrap; overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+  <h1>Teste local experimental</h1>
+  <p class="notice"><strong>Somente demonstração local.</strong> O alvo é decorativo e experimental. O sinal não bloqueia ações, não altera permissões nem muda acesso a conteúdo. Não use este protótipo para decisões sobre pessoas.</p>
+
+  <p>Inicie o teste e, se desejar, clique ou toque no alvo. Encerrar sempre apresenta um resultado estruturado, inclusive quando o alvo não foi acionado.</p>
+  <div class="controls">
+    <button id="start" type="button">Iniciar teste</button>
+    <button id="stop" type="button" disabled>Encerrar teste</button>
+  </div>
+
+  <div id="test-area">
+    <p>Área de demonstração. O alvo só aparece durante o teste e não participa de navegação ou conteúdo essencial.</p>
+    <div id="target" aria-hidden="true" tabindex="-1" role="presentation"></div>
+  </div>
+  <h2>Resultado</h2>
+  <pre id="result" aria-live="polite">Inicie e encerre o teste para gerar o JSON.</pre>
+
+  <script>
+    (() => {
+      const start = document.querySelector('#start');
+      const stop = document.querySelector('#stop');
+      const target = document.querySelector('#target');
+      const result = document.querySelector('#result');
+      let active = false;
+      let triggered = false;
+
+      start.addEventListener('click', () => {
+        active = true;
+        triggered = false;
+        target.style.display = 'block';
+        start.disabled = true;
+        stop.disabled = false;
+        result.textContent = 'Teste em andamento.';
+      });
+
+      target.addEventListener('click', () => {
+        if (active) triggered = true;
+      });
+
+      stop.addEventListener('click', () => {
+        if (!active) return;
+        active = false;
+        target.style.display = 'none';
+        start.disabled = false;
+        stop.disabled = true;
+        result.textContent = JSON.stringify({
+          trap_triggered: triggered,
+          experimental: true,
+          access_changed: false
+        }, null, 2);
+      });
+    })();
+  </script>
+</body>
+</html>
