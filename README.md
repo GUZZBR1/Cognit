@@ -203,13 +203,23 @@ Applications opt out with `optOut(appId, pseudonym)`, which deletes the profile 
 Tokens expire after 60 seconds by default; the configured lifetime can be at most five minutes. Run the Python tests with `python3 -m unittest discover -v`.
 ## Offline AI observer (shadow mode)
 
-`ai_observer.py` analyzes a minimized JSON export locally and writes an aggregate
-report to stdout. It only opens the input for reading; it does not make network
+`ai_observer.py` analyzes a minimized JSON export locally and writes an
+aggregate summary with row scores to stdout. It only opens the input for reading; it does not make network
 requests, mutate the source, import the decision policy, write policy, or take
 part in a live decision. Example:
 
 ```sh
 python3 ai_observer.py minimized-export.json > observer-report.json
+```
+
+The versioned test dataset at `test/fixtures/anomaly-dataset-v1.json` can be
+run directly with the same command. Its report is deterministic for a given
+observer version; the test suite runs it twice and checks that the input remains
+unchanged and that an outlier is reported only as a review candidate:
+
+```sh
+python3 ai_observer.py test/fixtures/anomaly-dataset-v1.json
+python3 -m unittest test_ai_observer -v
 ```
 
 Input is JSON schema version 1. `source_id` identifies the dataset origin for
@@ -231,8 +241,13 @@ Signal groups contain scalar string, boolean, or numeric fields. Null, missing,
 and nested values (including raw trajectories) are not analyzed; their aggregate
 count is reported. Report field names encode the group and field as a JSON pair
 to keep dotted names distinct. The report includes per-field aggregate summaries, repeated
-and singleton categorical fingerprint counts, and numeric candidates outside
-the dataset's 1.5×IQR fences. Fingerprints and categorical value summaries use
+and singleton categorical fingerprint counts, numeric candidates outside
+the dataset's 1.5×IQR fences, and a `record_scores` entry for each input row.
+Each score is the percentage (0–100) of that row's available numeric fields
+outside their dataset-derived 1.5×IQR fences; it is a distribution-deviation
+measure, not a probability or class prediction. Rows with no available numeric
+fields have a `null` score. `record_index` is the zero-based input position
+and does not copy an identifier or signal value. Fingerprints and categorical value summaries use
 SHA-256 digests so raw categorical values are not copied into the report. These
 digests support correlation and provenance checks; they are not anonymization
 and can be guessed for low-entropy values.
