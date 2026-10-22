@@ -6,7 +6,7 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "check": "node --experimental-strip-types --check src/cognit/session-engine.ts && node --experimental-strip-types --check src/cognit/history-profile-engine.ts",
+    "check": "node --experimental-strip-types --check src/cognit/session-engine.ts && node --experimental-strip-types --check src/cognit/history-profile-engine.ts && node --experimental-strip-types --check src/cognit/ad-campaign-schema.ts",
     "test": "node --experimental-strip-types --test",
     "test:python": "python3 -m unittest discover -v",
     "run:playwright": "node scripts/run-playwright.mjs",
