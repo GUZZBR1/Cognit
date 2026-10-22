@@ -1,0 +1,21 @@
+{
+  "algorithm_version": 1,
+  "seed": "fixture-seed-v1",
+  "config": {
+    "stimulus": "blue square",
+    "positions": ["left", "center", "right"],
+    "order": ["blue", "green", "red"],
+    "duration_ms": 1500,
+    "question": "Which color was shown?",
+    "distractors": ["black", "white"]
+  },
+  "expected_answer": "right",
+  "public_challenge": {
+    "challenge_id": "170a8d3d1a116b18de59345c",
+    "stimulus": "blue square",
+    "question": "Which color was shown?",
+    "choices": ["right", "white", "black"],
+    "order": ["blue", "red", "green"],
+    "duration_ms": 1500
+  }
+}

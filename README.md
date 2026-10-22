@@ -6,6 +6,7 @@ Cognit is a human-presence verification product library. This repository contain
 
 - `src/cognit/client-sdk.js` is the browser client for a host application's verification service.
 - `src/fixed-challenges.js`, `src/seeded-generator.js`, `challenge_generator.py`, and `challenge_mutations.mjs` provide fixed and reproducible challenge generation.
+- `challenge/` is the Go implementation of challenge algorithm v1; `go run ./examples/challenge` demonstrates generation and server-side answer validation.
 - `src/reaction-time-collector.mjs` and `src/mouse-telemetry.mjs` collect attempt timing and return derived mouse features without retaining raw trajectories.
 - `browser-automation-signals.js` reports heuristic browser signals. An individual signal is not proof of automation, and an empty result does not prove human presence.
 - `src/cognit/session-engine.ts` and `journey_tracker.py` provide session state and an event timeline.
