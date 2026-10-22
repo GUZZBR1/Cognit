@@ -10,6 +10,7 @@ Cognit is a human-presence verification product library. This repository contain
 - `browser-automation-signals.js` reports heuristic browser signals. An individual signal is not proof of automation, and an empty result does not prove human presence.
 - `src/cognit/session-engine.ts` and `journey_tracker.py` provide session state and an event timeline.
 - `risk_score.py` combines available evidence into an advisory score. `decision_policy.py` maps it to configured `ALLOW`, `CHALLENGE`, `RESTRICT`, `BLOCK`, or `UNKNOWN` outcomes.
+- `go/decisionpolicy` is a standalone Go implementation of configurable decision policies; run its reproducible example with `cd go/decisionpolicy && go run ./examples/basic`.
 - `verification_token.py` issues and validates server-side, action-bound, expiring, one-use signed tokens.
 - `docs/api/verification-v0.yaml` defines the application-facing verification API contract.
 
