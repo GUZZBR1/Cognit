@@ -4,10 +4,5 @@
   "type": "module",
   "engines": {
     "node": ">=22.12.0"
-  },
-  "scripts": {
-    "check": "node --experimental-strip-types --check src/cognit/session-engine.ts && node --experimental-strip-types --check src/cognit/history-profile-engine.ts",
-    "test": "node --experimental-strip-types --test",
-    "test:python": "python3 -m unittest test_challenge_generator test_decision_policy test_journey_tracker test_protected_action_demo test_risk_score test_verification_token -v"
   }
 }
