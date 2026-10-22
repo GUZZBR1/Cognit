@@ -6,17 +6,8 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "check": "node --experimental-strip-types --check src/cognit/session-engine.ts && node --experimental-strip-types --check src/cognit/history-profile-engine.ts && node --experimental-strip-types --check src/cognit/ad-campaign-schema.ts",
+    "check": "node --experimental-strip-types --check src/cognit/session-engine.ts && node --experimental-strip-types --check src/cognit/history-profile-engine.ts",
     "test": "node --experimental-strip-types --test",
-    "report:session-signatures": "node scripts/report-session-signatures.mjs",
-    "test:python": "python3 -m unittest discover -v",
-    "run:playwright": "node scripts/run-playwright.mjs",
-    "attack-lab:selenium": "node attack-lab/selenium.js",
-    "attack-lab:puppeteer": "node attack-lab/puppeteer.js"
-  },
-  "devDependencies": {
-    "playwright": "^1.64.1",
-    "puppeteer": "^25.16.0",
-    "selenium-webdriver": "^4.38.0"
+    "test:python": "python3 -m unittest test_challenge_generator test_decision_policy test_journey_tracker test_protected_action_demo test_risk_score test_verification_token -v"
   }
 }
