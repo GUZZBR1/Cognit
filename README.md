@@ -95,6 +95,14 @@ The document envelope matches Playwright exactly; each attempt extends its row s
 
 Scores must be finite numbers from 0 through 100; confidence must be finite from 0 through 1. Missing/invalid inputs, confidence below the configured minimum, missing required signals, and unmatched bands return `UNKNOWN` with a machine-readable reason. Invalid policy configurations raise `ValueError`. Signal values are opaque to this engine: rules test signal presence, not identity, intent, or signal meaning.
 
+## Verified ad events
+
+`ad_events.py` defines an allowlisted record for an ad `impression` or `interaction`. Each event has its own opaque `event_id`, an `ad_id`, a timezone-aware occurrence time, and the opaque `verification_result_id` plus `decision_version` that associate it with the result. `verification_result_origin` identifies the verifier that produced the linked result. The event carries the result's finite `confidence` (0–1) and a required `confidence_origin` naming the confidence producer/method; an optional `risk_score` is included only when the result producer provides one. The integration must copy these values from the trusted verification result and must not infer or recalculate them from ad activity.
+
+Confidence here describes the verification result's evidence coverage/reliability as reported by its producer (for example, `risk_score.score_risk.v1`). It is not a probability that a person is human. User-facing copy should describe a result as an estimate that may be wrong, for example: “This result is an estimate based on the available evidence and may be incorrect; it does not confirm a person's identity.” Do not say “100% human” or imply certainty.
+
+The record has no session ID, identity, challenge response, signal details, or raw telemetry fields. Keep linkage to the opaque result reference; do not enrich the event with session data. Ad events are measurement records only and must never be fed into `risk_score.py` or `decision_policy.py`. Raw mouse, browser, timing, and other verification telemetry must not be sent to advertisers.
+
 Run the Python tests with `python3 -m unittest discover -v`.
 
 ## Model evaluation harness
