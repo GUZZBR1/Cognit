@@ -105,6 +105,31 @@ The record has no session ID, identity, challenge response, signal details, or r
 
 Run the Python tests with `python3 -m unittest discover -v`.
 
+## Publisher revenue sharing (concept proposal)
+
+This is a future commercial model only. Cognit does not currently attribute publishers, calculate shares, or process payouts. The existing campaign budget is a budget record, not a definition of collected revenue or a distributable pool.
+
+### Participants and responsibilities
+
+- The **advertiser** funds a campaign and agrees to the reporting period, currency, and distributable publisher pool with the platform operator.
+- The **platform operator** owns campaign and publisher inventory attribution, validates and deduplicates delivery records, and prepares the reconciliation report.
+- The **publisher** hosts the inventory and receives its campaign-level aggregate report and contracted share.
+- The **verification provider** supplies the existing opaque verification-result reference for an associated ad event. It does not set commercial eligibility or calculate a share.
+
+### Proposed allocation rule
+
+For each campaign and closed reporting period, let `P` be the publisher pool agreed in the campaign contract, `n_p` the number of eligible verified impressions attributed to publisher `p`, and `N` the total eligible verified impressions across publishers. When `N > 0`, allocate `P × n_p / N` to each publisher. Define the pool as a fixed amount or an agreed portion of collected campaign revenue before the period starts; a campaign budget alone does not determine it. Handle currency rounding in minor units with a deterministic largest-remainder rule so allocations sum to `P`.
+
+Count at most one impression per trusted, deduplicated delivery event after the operator's agreed billing and attribution checks. The event must link to a trusted verification result, but its score, confidence, decision outcome, challenge result, or risk score must not affect eligibility or weighting. Clicks and other interactions are excluded from this base rule. If `N` is zero, carry or return the pool according to the campaign contract; do not invent an implicit share.
+
+Publisher attribution, billable-impression validation, late-event handling, and the precise distributable-pool basis are contract and platform responsibilities. They are not defined by the current campaign schema or `ad_events.py` and are not implemented here.
+
+### Apportionment data and safeguards
+
+The operator can retain event-level identifiers internally for deduplication, provenance, and dispute review. The publisher-facing report should contain only aggregates: campaign ID, opaque publisher ID, reporting-window start/end, currency, pool basis and amount, eligible impression count, campaign-wide eligible total, share percentage and amount, excluded/duplicate counts, allocation-rule version, and reconciliation status. Do not send event or verification-result IDs, session identifiers, identities, challenge answers, signals, or raw telemetry to publishers.
+
+Keep commercial accounting separate from Cognit's verification and decision path. Ad activity and revenue must never feed `risk_score.py` or `decision_policy.py`, or change scoring, thresholds, confidence, or policy. The existing ad-event confidence and optional risk score are copied measurement fields, not allocation inputs.
+
 ## Model evaluation harness
 
 `evaluation_runner.py` runs an existing predictor against labeled cases and
