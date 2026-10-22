@@ -26,6 +26,29 @@
         <p id="consent-status" class="status" role="status"></p>
       </section>
 
+      <section class="panel" aria-labelledby="ad-challenge-title" id="ad-challenge">
+        <h2 id="ad-challenge-title">Experimental ad challenge</h2>
+        <p>This local demo shows an example advertisement and asks one question about it. It is not a security check and cannot verify whether someone is human.</p>
+        <button id="show-ad" type="button">View demo ad</button>
+        <div id="ad-content" class="ad-card" hidden>
+          <p class="ad-label">DEMO AD</p>
+          <h3>Aurora Oat Bar</h3>
+          <p>Start your morning with a little more sunshine. Try the new honey almond oat bar.</p>
+          <p class="ad-brand">Aurora</p>
+        </div>
+        <form id="ad-answer-form" hidden>
+          <label for="ad-answer">What brand is shown in the demo ad?</label>
+          <select id="ad-answer" required>
+            <option value="">Choose an answer</option>
+            <option value="aurora">Aurora</option>
+            <option value="solana">Solana</option>
+            <option value="meadow">Meadow</option>
+          </select>
+          <button type="submit">Submit demo answer</button>
+        </form>
+        <p id="ad-status" class="status" role="status" aria-live="polite"></p>
+      </section>
+
       <section class="panel" aria-labelledby="setup-title" id="setup-panel" hidden>
         <h2 id="setup-title">Set up your challenge</h2>
         <label for="challenge">Challenge</label>
