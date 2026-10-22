@@ -68,6 +68,56 @@ Scores must be finite numbers from 0 through 100; confidence must be finite from
 
 Run the Python tests with `python3 -m unittest discover -v`.
 
+## Offline AI observer (shadow mode)
+
+`ai_observer.py` analyzes a minimized JSON export locally and writes an aggregate
+report to stdout. It only opens the input for reading; it does not make network
+requests, mutate the source, import the decision policy, write policy, or take
+part in a live decision. Example:
+
+```sh
+python3 ai_observer.py minimized-export.json > observer-report.json
+```
+
+Input is JSON schema version 1. `source_id` identifies the dataset origin for
+audit purposes. Use a stable export or collection name, not a session or person
+identifier. Each record should contain only minimized signal summaries:
+
+```json
+{
+  "schema_version": 1,
+  "source_id": "weekly-minimized-export",
+  "records": [
+    {"signals": {"browser": {"webdriver": false}, "mouse": {"pause_count": 2}}},
+    {"signals": {"browser": {"webdriver": true}, "mouse": {"pause_count": 1}}}
+  ]
+}
+```
+
+Signal groups contain scalar string, boolean, or numeric fields. Null, missing,
+and nested values (including raw trajectories) are not analyzed; their aggregate
+count is reported. The report includes per-field aggregate summaries, repeated
+and singleton categorical fingerprint counts, and numeric candidates outside
+the dataset's 1.5×IQR fences. Fingerprints and categorical value summaries use
+SHA-256 digests so raw categorical values are not copied into the report. These
+digests support correlation and provenance checks; they are not anonymization
+and can be guessed for low-entropy values.
+The output also records the source identifier, canonical input hash, observer
+version, configuration, and configuration hash. Identical input and code
+version produce a deterministic report.
+
+Observations are separate from conclusions; conclusions are always empty.
+Outliers and unusual fingerprints are review candidates, not evidence of
+automation, malicious intent, or model error. Small or unusable datasets are
+marked `insufficient_data`. Missing signals can reflect omission or collection
+limits. The observer does not infer false positives or false negatives. Those
+assessments need labels supplied and independently reviewed outside this tool,
+with their own provenance. Do not use observer output as ground truth or to
+change live policy or decisions.
+
+Run its tests with `python3 -m unittest test_ai_observer -v` or run the full
+Python suite with `python3 -m unittest discover -v`.
+
 ## Signed verification tokens
 
 `verification_token.py` provides a framework-neutral server-side token issuer and verifier. Configure one random secret of at least 32 bytes per application on the server; never send these secrets to a client. After the server confirms that a session is authorized for an action, call `VerificationTokenService.issue` with the application, site, session, and action IDs. Send the resulting token to the trusted verification service.
