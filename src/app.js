@@ -1,5 +1,6 @@
 import { fixedChallenges, createResult, createAttemptRecorder } from "./fixed-challenges.js";
 import { HumanDataset } from "./human-dataset.js";
+import { createOperationalMetrics } from "./operational-metrics.js";
 
 const $ = (id) => document.getElementById(id);
 const challengeSelect = $("challenge");
@@ -31,6 +32,16 @@ $("begin-study").addEventListener("click", () => {
   $("withdraw-area").hidden = false;
   $("consent-status").textContent = "Consent recorded. You may withdraw at any time.";
 });
+
+const operationalMetrics = createOperationalMetrics();
+const dashboardStart = new Date(operationalMetrics.snapshot().periodStart);
+$("dashboard-start").dateTime = dashboardStart.toISOString();
+$("dashboard-start").textContent = dashboardStart.toLocaleString();
+
+function renderOperationalMetrics() {
+  const { completedAttempts } = operationalMetrics.snapshot();
+  $("metric-traffic").textContent = `${completedAttempts} completed ${completedAttempts === 1 ? "attempt" : "attempts"}`;
+}
 
 for (const [index, challenge] of fixedChallenges.entries()) {
   const option = document.createElement("option");
@@ -139,6 +150,8 @@ form.addEventListener("submit", (event) => {
     reaction_time_ms: activePresentation === "visual" ? performance.now() - answerStartedAt : null
   }));
   if (!result) return;
+  operationalMetrics.recordCompletedAttempt();
+  renderOperationalMetrics();
   activeResult = result;
   answer.disabled = true;
   form.querySelector('button[type="submit"]').disabled = true;
