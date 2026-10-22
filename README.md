@@ -218,6 +218,53 @@ observer output as ground truth or to change live policy or decisions.
 Run its tests with `python3 -m unittest test_ai_observer -v` or run the full
 Python suite with `python3 -m unittest discover -v`.
 
+## Human signature representation v0
+
+`src/session-signature.mjs` builds a reproducible experimental representation
+from already minimized, caller-supplied per-session aggregates. It emits a
+version-0 flat map of canonical `group.field` numeric values and an explicit
+unavailable list by group. It does not read raw events, collect identifiers,
+persist profiles, or classify sessions. Run the synthetic comparison report
+with `npm run report:session-signatures`; run focused coverage with
+`node --test test/session-signature.test.mjs`.
+
+Inputs use the existing feature boundaries: `perception` maps
+`duration_ms` and `correct` from a minimized challenge result; `timing` accepts
+caller-derived `durationMs` and `reactionTimeMs` (never absolute timestamps);
+`behavior.features` accepts only the listed aggregates from the existing mouse
+feature pipeline (`distancePx`, `durationMs`, `meanSpeedPxPerMs`, `pauseCount`,
+`directionChanges`, `speedVariation`, and `trajectoryEntropyBits`). `journey`
+accepts only optional aggregate counts (`sessionCount`, `succeededCount`,
+`failedCount`); it does not consume timestamps or pseudonyms from the journey
+engine. `browser` accepts allowlisted boolean observations named for the
+existing browser heuristics. These flags are unweighted observations, not
+verdicts. `history` accepts the same optional counts only when an application
+explicitly supplies them; it is absent by default. Where no suitable minimized
+input exists, the group remains unavailable rather than being reconstructed
+from raw data.
+
+Missing groups, absent fields, nulls, non-finite or negative measurements,
+fractional counts, and unsupported value types are marked unavailable and
+never imputed as zero. Boolean values are accepted only for correctness and
+browser flags, then become 0/1. The comparator also rejects unknown feature
+keys and invalid values in a supplied signature. Pair comparison uses only
+finite numeric features available in both signatures. For each common feature, difference is
+`abs(a-b) / max(1, abs(a), abs(b))`; reported distance is the arithmetic mean
+of those differences. The report includes common feature count, union count,
+and common/union coverage. With no common values, distance is `null`. This is a
+simple exploratory baseline: features have equal weight and the scale rule is
+not learned or calibrated. It supports cautious experimental similarity
+comparisons only, not identity, class, or human/automation claims.
+
+The checked-in `test/fixtures/session-signatures-v0.json` contains synthetic
+session names, not persistent pseudonyms. Output ordering and arithmetic are
+deterministic for a given input and schema version. Feature mappings and
+missingness semantics are versioned by the module's `schemaVersion`; changing
+names, units, or transformations requires a version change and comparable
+inputs should use the same version. History remains opt-in and app-scoped under
+the existing history engine's consent/retention controls; this representation
+does not instantiate that engine or create a per-person profile by default.
+
 ## Client SDK v0 integration example
 
 Open `http://localhost:8000/integration-demo.html` to run a complete browser-side flow through `CognitClient`: create a session, retrieve and render a challenge, send aggregated mouse telemetry, submit a response, and poll for the result and verification token. The page uses a clearly labeled in-memory service stub; its response and `demo-token-not-for-production` token are illustrative and authorize no action. The button on the page simulates a network failure so the error state can be seen.
