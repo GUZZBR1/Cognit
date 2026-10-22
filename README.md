@@ -228,6 +228,11 @@ persist profiles, or classify sessions. Run the synthetic comparison report
 with `npm run report:session-signatures`; run focused coverage with
 `node --test test/session-signature.test.mjs`.
 
+The absence of identifier fields does not make a signature anonymous: combined
+behavior, browser, and perception aggregates may be linkable. Applications
+should handle signatures as potentially sensitive data and apply their own
+access, retention, and deletion controls.
+
 Inputs use the existing feature boundaries: `perception` maps
 `duration_ms` and `correct` from a minimized challenge result; `timing` accepts
 caller-derived `durationMs` and `reactionTimeMs` (never absolute timestamps);
@@ -261,9 +266,10 @@ session names, not persistent pseudonyms. Output ordering and arithmetic are
 deterministic for a given input and schema version. Feature mappings and
 missingness semantics are versioned by the module's `schemaVersion`; changing
 names, units, or transformations requires a version change and comparable
-inputs should use the same version. History remains opt-in and app-scoped under
-the existing history engine's consent/retention controls; this representation
-does not instantiate that engine or create a per-person profile by default.
+inputs should use the same version. History is opt-in: the application controls
+consent and calls the app-scoped history engine when appropriate. This
+representation does not instantiate that engine or create a per-person profile
+by default.
 
 ## Client SDK v0 integration example
 
