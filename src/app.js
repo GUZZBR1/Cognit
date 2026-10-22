@@ -1,4 +1,5 @@
 import { fixedChallenges, createResult, createAttemptRecorder } from "./fixed-challenges.js";
+import { HumanDataset } from "./human-dataset.js";
 
 const $ = (id) => document.getElementById(id);
 const challengeSelect = $("challenge");
@@ -13,6 +14,22 @@ let activeChallenge;
 let activeDurationMs;
 let recordAttempt = createAttemptRecorder();
 let hideTimer;
+let dataset;
+
+$("consent").addEventListener("change", () => {
+  $("begin-study").disabled = !$("consent").checked;
+});
+
+$("begin-study").addEventListener("click", () => {
+  if (!$("consent").checked) return;
+  dataset = new HumanDataset();
+  const pseudonym = dataset.consent({ informed: true, consentVersion: "human-dataset-consent-v1" });
+  $("participant-code").textContent = pseudonym;
+  $("consent-panel").hidden = true;
+  $("setup-panel").hidden = false;
+  $("withdraw-area").hidden = false;
+  $("consent-status").textContent = "Consent recorded. You may withdraw at any time.";
+});
 
 for (const [index, challenge] of fixedChallenges.entries()) {
   const option = document.createElement("option");
@@ -87,16 +104,52 @@ form.addEventListener("submit", (event) => {
   $("result-summary").textContent = activeResult.correct ? "Correct." : "Challenge complete.";
   $("result-json").textContent = JSON.stringify(activeResult, null, 2);
   resultArea.hidden = false;
+  $("save-record").disabled = false;
+  $("download").disabled = true;
+  $("dataset-status").textContent = "This result has not been added to the pilot dataset.";
   $("status").textContent = "Attempt recorded.";
-  $("download").focus();
+  $("save-record").focus();
+});
+
+$("save-record").addEventListener("click", () => {
+  if (!dataset || !activeResult) return;
+  try {
+    dataset.record(activeResult);
+    $("save-record").disabled = true;
+    $("download").disabled = false;
+    $("dataset-status").textContent = "Added to the in-memory pilot dataset. You can download it or withdraw and delete it.";
+  } catch (error) {
+    $("dataset-status").textContent = error.message;
+  }
 });
 
 $("download").addEventListener("click", () => {
-  const blob = new Blob([`${JSON.stringify(activeResult, null, 2)}\n`], { type: "application/json" });
+  if (!dataset) return;
+  const records = dataset.getRecords();
+  if (!records.length) return;
+  const blob = new Blob([`${JSON.stringify({ schema_version: 1, records }, null, 2)}\n`], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${activeResult.challenge_id}-result.json`;
+  link.download = "human-dataset.json";
   link.click();
   URL.revokeObjectURL(url);
+});
+
+$("withdraw").addEventListener("click", () => {
+  dataset?.withdraw();
+  clearTimeout(hideTimer);
+  activeResult = undefined;
+  $("result-area").hidden = true;
+  $("challenge-area").hidden = true;
+  $("setup-panel").hidden = true;
+  $("withdraw-area").hidden = true;
+  $("consent").disabled = true;
+  $("begin-study").disabled = true;
+  $("consent").parentElement.hidden = true;
+  $("begin-study").hidden = true;
+  $("consent-panel").hidden = false;
+  $("consent-panel").querySelector("h2").textContent = "Participation ended";
+  $("withdraw-message").textContent = "Your participation ended. Records held in this page were deleted and no more data will be collected in this session. To request deletion of files already exported, contact the researcher using the details on your study invitation.";
+  $("consent-status").textContent = "Collection ended and records held in this page were deleted.";
 });

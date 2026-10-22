@@ -17,8 +17,13 @@ h2 { margin-top: 0; font-size: 1.2rem; }
 label { display: block; margin: 1rem 0 .4rem; font-weight: 650; }
 select, input, button { font: inherit; }
 select, input { width: 100%; min-height: 2.75rem; padding: .55rem .7rem; border: 1px solid #aeb7c8; border-radius: .5rem; background: white; color: inherit; }
+input[type="checkbox"] { width: 1.15rem; min-height: 1.15rem; margin: 0 .5rem 0 0; vertical-align: middle; }
+.consent-choice { display: flex; align-items: flex-start; gap: .25rem; }
 button { min-height: 2.75rem; margin-top: 1.2rem; padding: .6rem 1rem; border: 0; border-radius: .5rem; background: #394da6; color: white; font-weight: 700; cursor: pointer; }
 button:hover { background: #293b8b; }
+button:disabled { opacity: .55; cursor: not-allowed; }
+.danger { background: #9f3535; }
+.danger:hover { background: #812727; }
 button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid #8293ed; outline-offset: 2px; }
 .stimulus { display: grid; width: min(100%, 22rem); aspect-ratio: 1; gap: .6rem; margin: 1.25rem auto; padding: 1rem; border-radius: .8rem; background: #202532; }
 .tile { display: grid; place-items: center; min-width: 0; border-radius: .5rem; font-size: clamp(1.4rem, 7vw, 2.6rem); font-weight: 750; }
