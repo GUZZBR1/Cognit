@@ -144,6 +144,48 @@ measured latencies; observed latency naturally varies between real runs. The
 harness computes metrics for caller-supplied
 models or rules and does not select thresholds or compare feature groups.
 
+## Human vs automation benchmark report
+
+`benchmark_report.py` creates a deterministic JSON comparison from identified
+HumanDataset, Playwright, Selenium, and Puppeteer exports. Supply only files
+that exist; for example:
+
+```sh
+python3 benchmark_report.py \
+  --human human-dataset-reviewed.json \
+  --playwright playwright-results.json \
+  --selenium attack-lab/selenium-results.json \
+  --puppeteer attack-lab/puppeteer-results.json \
+  --output benchmark-report.json
+```
+
+Every group without an input is marked `unavailable`. Human records count only
+when the operator has added `HUMAN_CONFIRMED: true` and non-empty independent
+review provenance (`method`, `origin`, and `procedure`). The pilot export does
+not add that label itself. Human false-positive rate is reported only when a
+confirmed record also has an explicit boolean `predicted_automation`; its
+numerator is predicted automation and its denominator is confirmed human
+records with a prediction. Predictions must include non-empty
+`prediction_provenance.method`, `origin`, and `version`, which are copied to the
+report. No prediction or browser signal is interpreted as a classifier result.
+
+Accuracy uses `correct / attempts with a boolean correctness result`. Reaction
+time, display duration, completion time, and mouse features include only
+recorded values; incomplete mouse aggregation is excluded. Completion time is
+available only if an input record explicitly supplies `completion_time_ms`.
+Challenge performance is broken out by challenge ID. Browser signal rates are
+reported only for observed boolean signals. Metrics include counts and
+denominators. The 95% uncertainty interval uses a deterministic percentile
+cluster bootstrap over independent sessions (2,000 replicates); continuous
+summaries use per-session means and rates pool observations. It is marked
+unavailable with fewer than two sessions. Session IDs are used only in memory
+to aggregate attempts and are not copied to the report. Each source file's
+SHA-256 digest and recorded runner/browser versions are included for
+reproducibility; missing version metadata is stated as `not_recorded`.
+
+With no arguments, the command writes a protocol-only report and marks all four
+groups unavailable. It does not generate or simulate participant data.
+
 ## Signed verification tokens
 
 `verification_token.py` provides a framework-neutral server-side token issuer and verifier. Configure one random secret of at least 32 bytes per application on the server; never send these secrets to a client. After the server confirms that a session is authorized for an action, call `VerificationTokenService.issue` with the application, site, session, and action IDs. Send the resulting token to the trusted verification service.

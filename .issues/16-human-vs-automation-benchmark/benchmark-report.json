@@ -1,0 +1,43 @@
+{
+  "groups": {
+    "human": {
+      "reason": "no_dataset_supplied",
+      "runner": "Cognit HumanDataset pilot; independent operator confirmation required",
+      "status": "unavailable"
+    },
+    "playwright": {
+      "reason": "no_dataset_supplied",
+      "runner": "scripts/run-playwright.mjs",
+      "status": "unavailable"
+    },
+    "puppeteer": {
+      "reason": "no_dataset_supplied",
+      "runner": "attack-lab/puppeteer.js",
+      "status": "unavailable"
+    },
+    "selenium": {
+      "reason": "no_dataset_supplied",
+      "runner": "attack-lab/selenium.js",
+      "status": "unavailable"
+    }
+  },
+  "limitations": [
+    "No group result implies universal separation of humans and automation.",
+    "Browser indicators are experimental signals; missing indicators do not establish human operation.",
+    "Within-session attempts are summarized per session before uncertainty is estimated.",
+    "A report with unavailable groups or metrics makes no inference about them."
+  ],
+  "protocol": {
+    "accuracy": "correct / attempts with a boolean correctness result; unknown or absent correctness excluded.",
+    "challenge_set": "fixed-challenges.js; compare identical challenge IDs only",
+    "challenge_set_sha256": "bb4ca50830eed3ece2684eed4393d5b48c569106b017f056260ae86209a74a87",
+    "collection": "Use source exports as collected; do not infer missing labels, signals, or timings.",
+    "completion_time": "Only an explicit completion_time_ms observation is summarized; it is not inferred from attempt timestamps.",
+    "human_false_positive_rate": "explicit predicted_automation=true / confirmed human attempts with a boolean prediction and non-empty prediction_provenance.method, origin, and version.",
+    "human_inclusion": "HUMAN_CONFIRMED=true plus non-empty method, origin, and procedure from independent review.",
+    "name": "Cognit Human vs Automation descriptive benchmark",
+    "uncertainty": "95% percentile cluster bootstrap resampling independent sessions; continuous summaries use per-session means and rates pool observations; 2,000 replicates; deterministic per group and metric. Unavailable below two sessions.",
+    "version": "1"
+  },
+  "report_version": 1
+}
