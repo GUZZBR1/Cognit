@@ -143,3 +143,62 @@ models or rules and does not select thresholds or compare feature groups.
 The verifier must supply the expected application, site, session, and action from its own server-side context. `verify_and_consume` checks the HMAC-SHA256 signature, claim bindings, issue and expiry times, then atomically consumes the nonce. A token is accepted once. The default in-memory nonce store is safe for concurrent requests in one process; deployments with multiple processes or hosts must inject a shared store with an atomic `consume_once` operation.
 
 Tokens expire after 60 seconds by default; the configured lifetime can be at most five minutes. Run the Python tests with `python3 -m unittest discover -v`.
+## Offline AI observer (shadow mode)
+
+`ai_observer.py` analyzes a minimized JSON export locally and writes an aggregate
+report to stdout. It only opens the input for reading; it does not make network
+requests, mutate the source, import the decision policy, write policy, or take
+part in a live decision. Example:
+
+```sh
+python3 ai_observer.py minimized-export.json > observer-report.json
+```
+
+Input is JSON schema version 1. `source_id` identifies the dataset origin for
+audit purposes. Use a stable export or collection name, not a session or person
+identifier. Each record should contain only minimized signal summaries:
+
+```json
+{
+  "schema_version": 1,
+  "source_id": "weekly-minimized-export",
+  "records": [
+    {"signals": {"browser": {"webdriver": false}, "mouse": {"pause_count": 2}}},
+    {"signals": {"browser": {"webdriver": true}, "mouse": {"pause_count": 1}}}
+  ]
+}
+```
+
+Signal groups contain scalar string, boolean, or numeric fields. Null, missing,
+and nested values (including raw trajectories) are not analyzed; their aggregate
+count is reported. Report field names encode the group and field as a JSON pair
+to keep dotted names distinct. The report includes per-field aggregate summaries, repeated
+and singleton categorical fingerprint counts, and numeric candidates outside
+the dataset's 1.5×IQR fences. Fingerprints and categorical value summaries use
+SHA-256 digests so raw categorical values are not copied into the report. These
+digests support correlation and provenance checks; they are not anonymization
+and can be guessed for low-entropy values.
+The output also records the source identifier, canonical input hash, observer
+version, configuration, and configuration hash. Identical input and code
+version produce a deterministic report.
+
+To compare possible false-positive/negative candidates, include `positive_class`
+at the dataset level and an optional `evaluation` on reviewed records. Each
+evaluation must provide `prediction` and `reviewed_outcome` (`positive` or
+`negative`) plus `review_provenance` with non-empty `method`, `origin`, and
+`procedure` fields. The report exposes only aggregate candidate counts; it does
+not copy these per-record labels or provenance into the output.
+
+Observations are separate from conclusions; conclusions are always empty.
+Outliers and unusual fingerprints are review candidates, not evidence of
+automation, malicious intent, or model error. Small or unusable datasets are
+marked `insufficient_data`. Missing signals can reflect omission or collection
+limits. False-positive/negative counts identify disagreements with externally
+supplied, independently reviewed reference outcomes; those outcomes are not
+ground truth, and the counts still need human interpretation. Without reviewed
+comparisons, the report marks that no candidates can be counted. Do not use
+observer output as ground truth or to change live policy or decisions.
+
+Run its tests with `python3 -m unittest test_ai_observer -v` or run the full
+Python suite with `python3 -m unittest discover -v`.
+
