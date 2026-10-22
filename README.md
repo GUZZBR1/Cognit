@@ -75,3 +75,9 @@ Run the Python tests with `python3 -m unittest discover -v`.
 The verifier must supply the expected application, site, session, and action from its own server-side context. `verify_and_consume` checks the HMAC-SHA256 signature, claim bindings, issue and expiry times, then atomically consumes the nonce. A token is accepted once. The default in-memory nonce store is safe for concurrent requests in one process; deployments with multiple processes or hosts must inject a shared store with an atomic `consume_once` operation.
 
 Tokens expire after 60 seconds by default; the configured lifetime can be at most five minutes. Run the Python tests with `python3 -m unittest discover -v`.
+
+## Verification API v0 contract
+
+The [OpenAPI 3.1 contract](docs/api/verification-v0.yaml) specifies five application-facing operations: create a session, request a challenge, submit a result, verify a session, and validate a token. It is a versioned integration contract, not a hosted Cognit service. [The stdlib mock](examples/verification_api_mock.py) demonstrates all five HTTP calls locally: `python3 examples/verification_api_mock.py --demo`.
+
+Applications authenticate server-to-server with a bearer API key over TLS. Keep credentials and signing secrets on the server; bind each key to one application, and resolve every session and record inside that authenticated application's namespace. A deployment should enforce per-application rate limits, return `429` with `Retry-After`, and avoid logging credentials, tokens, submitted answers, or raw telemetry. Retain only operational identifiers and outcome data needed for debugging and audit, with short retention. Limits and retention periods are deployment policy; this contract does not prescribe production values.
