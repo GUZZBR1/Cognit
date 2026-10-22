@@ -12,6 +12,12 @@ python3 -m http.server 8000
 
 Then visit `http://localhost:8000`. The app uses native browser modules and has no install step or external dependencies.
 
+## Client SDK v0 integration example
+
+Open `http://localhost:8000/integration-demo.html` to run a complete browser-side flow through `CognitClient`: create a session, retrieve and render a challenge, send aggregated mouse telemetry, submit a response, and poll for the result and verification token. The page uses a clearly labeled in-memory service stub; its response and `demo-token-not-for-production` token are illustrative and authorize no action. The button on the page simulates a network failure so the error state can be seen.
+
+The SDK receives its service URL and `fetch` implementation from the host application. It sends no secret and makes no security decision. Replace the demo stub with an authenticated application backend before using a real service; the backend owns authorization and token issuance. Mouse samples are aggregated in the page with `aggregateMouseAttempt` and only the aggregate features are sent.
+
 Each completed attempt produces one JSON object:
 
 ```json
