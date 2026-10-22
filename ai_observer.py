@@ -1,7 +1,7 @@
 """Deterministic, offline observer for minimized Cognit signal exports.
 
-This module describes aggregate patterns for human review. It does not score,
-classify, or make decisions about sessions or people.
+This module reports distribution-deviation scores for human review. Scores do
+not classify or make decisions about sessions or people.
 """
 
 from __future__ import annotations
@@ -86,7 +86,7 @@ def _quantile(sorted_values: list[float], fraction: float) -> float:
 
 
 def analyze_dataset(dataset: Mapping[str, Any]) -> dict[str, Any]:
-    """Analyze a minimized v1 dataset and return an aggregate-only report."""
+    """Analyze a minimized v1 dataset and return summaries with row scores."""
     if not isinstance(dataset, Mapping):
         raise ValueError("dataset must be a JSON object")
     _validate_finite_json(dataset)
@@ -149,6 +149,7 @@ def analyze_dataset(dataset: Mapping[str, Any]) -> dict[str, Any]:
 
     observations: list[dict[str, Any]] = []
     field_summaries: dict[str, Any] = {}
+    numeric_fences: dict[str, tuple[float, float]] = {}
     for field in sorted(field_values):
         values = field_values[field]
         numeric = [float(value) for value in values if isinstance(value, (int, float)) and not isinstance(value, bool)]
@@ -164,6 +165,7 @@ def analyze_dataset(dataset: Mapping[str, Any]) -> dict[str, Any]:
             spread = q3 - q1
             lower = q1 - IQR_MULTIPLIER * spread
             upper = q3 + IQR_MULTIPLIER * spread
+            numeric_fences[field] = (lower, upper)
             outliers = [value for value in ordered if value < lower or value > upper]
             summary["numeric"] = {
                 "count": len(ordered),
@@ -196,6 +198,24 @@ def analyze_dataset(dataset: Mapping[str, Any]) -> dict[str, Any]:
                 ],
             }
         field_summaries[field] = summary
+
+    record_scores = []
+    for index, values in enumerate(flattened_records):
+        numeric_field_count = 0
+        outlier_field_count = 0
+        for field, (lower, upper) in numeric_fences.items():
+            value = values.get(field)
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                numeric_field_count += 1
+                if value < lower or value > upper:
+                    outlier_field_count += 1
+        record_scores.append({
+            "record_index": index,
+            "score": round(100 * outlier_field_count / numeric_field_count, 2)
+            if numeric_field_count else None,
+            "numeric_field_count": numeric_field_count,
+            "outlier_field_count": outlier_field_count,
+        })
 
     repeated_patterns = [count for count in pattern_counts.values() if count >= MIN_PATTERN_COUNT]
     rare_patterns = [count for count in pattern_counts.values() if count < MIN_PATTERN_COUNT]
@@ -300,6 +320,7 @@ def analyze_dataset(dataset: Mapping[str, Any]) -> dict[str, Any]:
             "ignored_or_missing_values": ignored_values,
         },
         "field_summaries": field_summaries,
+        "record_scores": record_scores,
         "observations": observations,
         "conclusions": [],
         "limitations": [

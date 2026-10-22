@@ -76,6 +76,45 @@ class AiObserverTests(unittest.TestCase):
             self.assertEqual(input_path.read_bytes(), original)
             self.assertEqual(json.loads(result.stdout)["status"], "analyzed")
 
+    def test_issue_19_fixture_produces_a_repeatable_distribution_deviation_candidate(self):
+        fixture_path = Path(__file__).parent / "test" / "fixtures" / "anomaly-dataset-v1.json"
+        observer_path = Path(__file__).with_name("ai_observer.py")
+        original = fixture_path.read_bytes()
+
+        reports = []
+        for _ in range(2):
+            result = subprocess.run(
+                [sys.executable, str(observer_path), str(fixture_path)],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            reports.append(json.loads(result.stdout))
+
+        self.assertEqual(reports[0], reports[1])
+        self.assertEqual(fixture_path.read_bytes(), original)
+        report = reports[0]
+        self.assertEqual(report["status"], "analyzed")
+        self.assertEqual(report["provenance"]["source_id"], "issue-19-offline-fixture")
+        self.assertIn(
+            "numeric_outlier_candidate",
+            {observation["kind"] for observation in report["observations"]},
+        )
+        scores = report["record_scores"]
+        self.assertEqual([item["score"] for item in scores], [0, 0, 0, 100])
+        self.assertEqual(max(scores, key=lambda item: item["score"])["record_index"], 3)
+        self.assertEqual(report["conclusions"], [])
+
+    def test_record_score_is_unavailable_when_record_has_no_numeric_fields(self):
+        report = analyze_dataset({
+            "schema_version": 1,
+            "source_id": "categorical-only-fixture",
+            "records": [{"signals": {"browser": {"webdriver": False}}} for _ in range(4)],
+        })
+
+        self.assertTrue(all(item["score"] is None for item in report["record_scores"]))
+
     def test_dotted_group_and_field_names_do_not_collide(self):
         dataset = {
             "schema_version": 1,
