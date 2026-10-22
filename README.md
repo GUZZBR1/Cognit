@@ -12,6 +12,27 @@ python3 -m http.server 8000
 
 Then visit `http://localhost:8000`. The app uses native browser modules and has no install step or external dependencies.
 
+## Human dataset pilot
+
+The pilot displays study information and requires explicit consent before a challenge can start. Participation is voluntary and can be withdrawn at any time with **Withdraw and delete**. Withdrawal removes that participant's records from the page's in-memory collection and ends the session. The page does not transmit data or persist it between reloads. If a participant already exported a dataset file, that file is outside the page's control; the participant can use the researcher contact details on the study invitation to request deletion of retained copies.
+
+The dataset uses a random page-session pseudonym and records only challenge/stimulus IDs, display duration, a challenge-allowlisted answer, correctness, response time, consent version/time, and record time. It excludes civil identity, contact details, raw mouse trajectories, and absolute input timestamps. Raw capture is disabled and unavailable. In-memory records expire after 30 days even while the page stays open; the research operator must delete exported copies by then and honor earlier withdrawal requests.
+
+`HUMAN_CONFIRMED` is deliberately absent from participant collection and cannot be set through the page's dataset API. After collection, a study operator may add it to an exported record only after an independent human review of participation (for example, direct observation in a researcher-facilitated session). The operator records the review method, evidence origin, and procedure/reference. Challenge answers, scores, models, and automation signals never establish this label. Missing provenance means the label is omitted. These fields describe the human review trail; they do not establish civil identity.
+
+The operator-added fields have this shape:
+
+```json
+{
+  "HUMAN_CONFIRMED": true,
+  "human_confirmation": {
+    "method": "independent human review",
+    "origin": "researcher-facilitated session observation",
+    "procedure": "study protocol version and observation reference"
+  }
+}
+```
+
 Each completed attempt produces one JSON object:
 
 ```json

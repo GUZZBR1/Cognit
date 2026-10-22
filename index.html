@@ -3,20 +3,30 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="A short visual perception challenge.">
-    <title>Cognit — Visual challenge</title>
+    <meta name="description" content="A consent-based human perception study pilot.">
+    <title>Cognit — Human dataset pilot</title>
     <link rel="stylesheet" href="styles.css">
     <script type="module" src="src/app.js"></script>
   </head>
   <body>
     <main>
       <header>
-        <p class="eyebrow">COGNIT · PERCEPTION LAB</p>
-        <h1>Visual challenge</h1>
-        <p>Look carefully at the pattern, then tell us what you noticed.</p>
+        <p class="eyebrow">COGNIT · PERCEPTION PILOT</p>
+        <h1>Human dataset pilot</h1>
+        <p>Take part in a short visual perception study. Participation is voluntary.</p>
       </header>
 
-      <section class="panel" aria-labelledby="setup-title">
+      <section class="panel" aria-labelledby="consent-title" id="consent-panel">
+        <h2 id="consent-title">Before you begin</h2>
+        <p>This pilot records your challenge, answer, whether it was correct, display duration, and response time. It does not collect your name, contact details, mouse movement, or other raw interaction data. Records stay in this browser until exported or deleted. The research team deletes retained exports within 30 days.</p>
+        <p id="withdraw-message">You may stop at any time. Use “Withdraw and delete” to erase this participant’s records held by this page. If you have already downloaded a file, contact the researcher using the contact details on your study invitation to request deletion of those copies.</p>
+        <p><strong>Raw data capture is off and unavailable in this pilot.</strong> No data is sent to a server.</p>
+        <label class="consent-choice"><input id="consent" type="checkbox"> I have read this information and freely agree to take part.</label>
+        <button id="begin-study" type="button" disabled>Agree and begin</button>
+        <p id="consent-status" class="status" role="status"></p>
+      </section>
+
+      <section class="panel" aria-labelledby="setup-title" id="setup-panel" hidden>
         <h2 id="setup-title">Set up your challenge</h2>
         <label for="challenge">Challenge</label>
         <select id="challenge"></select>
@@ -37,7 +47,7 @@
         <form id="answer-form" hidden>
           <label id="answer-label" for="answer"></label>
           <div class="answer-row">
-            <input id="answer" name="answer" autocomplete="off" required>
+            <input id="answer" name="answer" autocomplete="off" maxlength="16" required>
             <button type="submit">Submit answer</button>
           </div>
         </form>
@@ -48,7 +58,15 @@
         <h2 id="result-title">Your result</h2>
         <p id="result-summary"></p>
         <pre><code id="result-json"></code></pre>
-        <button id="download" type="button">Download JSON</button>
+        <button id="save-record" type="button">Add to pilot dataset</button>
+        <button id="download" type="button" disabled>Download dataset JSON</button>
+        <p id="dataset-status" class="status" role="status"></p>
+      </section>
+
+      <section id="withdraw-area" class="panel" aria-labelledby="withdraw-title" hidden>
+        <h2 id="withdraw-title">Your participation</h2>
+        <p>Your participant code is <code id="participant-code"></code>. Keep it if you need to discuss your study record with the researcher.</p>
+        <button id="withdraw" type="button" class="danger">Withdraw and delete</button>
       </section>
     </main>
   </body>
