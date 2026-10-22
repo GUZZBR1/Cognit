@@ -51,3 +51,11 @@ Run the Node.js test suite with Node 22 or newer:
 ```sh
 npm test
 ```
+
+## Experimental browser automation signals
+
+`browser-automation-signals.js` collects heuristic signals observable in the current page and returns a local JSON result. It sends no network requests, creates no identifier, and does not classify a person as a bot or human. Call `CognitAutomationSignals.collect(window)` from the browser console after loading the script.
+
+Signals include `navigator.webdriver`, known Playwright/Selenium/Puppeteer globals, `cdc_*` markers, a headless Chrome user-agent token, and empty plugin/language lists. Each signal includes evidence and limitations. Individual indicators can be hidden, change across versions, or appear in legitimate testing; an empty result only means that the known indicators were not observed.
+
+The test suite uses simulated browser environments. It validates the result structure and cautious interpretation, not real browser runs of each automation framework.
