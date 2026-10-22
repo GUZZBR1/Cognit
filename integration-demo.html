@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Exemplo mínimo de integração do SDK cliente Cognit.">
+    <title>Cognit — integração do SDK</title>
+    <link rel="stylesheet" href="styles.css">
+    <script type="module" src="src/integration-demo.js"></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">COGNIT · EXEMPLO DE INTEGRAÇÃO</p>
+        <h1>SDK cliente v0</h1>
+        <p>Este exemplo usa um stub local identificado. Ele demonstra o contrato do cliente; não chama um backend real.</p>
+      </header>
+
+      <section class="panel" aria-labelledby="service-title">
+        <h2 id="service-title">Serviço de demonstração</h2>
+        <p><strong>Stub local, sem backend.</strong> A resposta e o token abaixo são fictícios e não autorizam nenhuma ação.</p>
+        <button id="simulate-network-error" type="button">Simular erro de rede</button>
+      </section>
+
+      <section class="panel" aria-labelledby="setup-title">
+        <h2 id="setup-title">Fluxo do desafio</h2>
+        <label for="duration">Tempo de exibição</label>
+        <select id="duration">
+          <option value="100">100 ms</option>
+          <option value="500">500 ms</option>
+        </select>
+        <button id="start" type="button">Iniciar sessão e desafio</button>
+        <p id="status" class="status" role="status" aria-live="polite">Pronto para iniciar.</p>
+      </section>
+
+      <section id="challenge-area" class="panel" aria-live="polite" hidden>
+        <h2 id="challenge-title">Desafio</h2>
+        <p id="instruction"></p>
+        <div id="stimulus" class="stimulus" role="img"></div>
+        <form id="answer-form" hidden>
+          <label id="answer-label" for="answer"></label>
+          <div class="answer-row">
+            <input id="answer" autocomplete="off" required>
+            <button type="submit">Enviar resposta</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="result-area" class="panel" aria-labelledby="result-title" hidden>
+        <h2 id="result-title">Resposta do serviço</h2>
+        <p>O SDK apenas apresenta a resposta recebida; o serviço é responsável por qualquer decisão.</p>
+        <pre><code id="result-json"></code></pre>
+        <p id="token-output"></p>
+      </section>
+    </main>
+  </body>
+</html>
