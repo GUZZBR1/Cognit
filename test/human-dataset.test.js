@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { DEFAULT_RETENTION_MS, HumanDataset } from "../src/human-dataset.js";
+import { fixedChallenges, createResult } from "../src/fixed-challenges.js";
 
 function fixture(options = {}) {
   let now = 1_800_000_000_000;
@@ -27,6 +28,26 @@ test("requires explicit consent and records only minimized fields with a pseudon
   assert.throws(() => dataset.record({ ...result, stimulus_id: "wrong-stimulus" }), /IDs do not match/i);
   assert.throws(() => dataset.record({ ...result, correct: false }), /correctness does not match/i);
   assert.throws(() => dataset.record({ ...result, humanConfirmed: { method: "review", origin: "record", procedure: "v1" } }), /unsupported fields/i);
+});
+
+test("records accessible untimed results without inventing timing evidence", () => {
+  const { dataset } = fixture();
+  consent(dataset);
+  const accessibleResult = createResult({
+    challenge: fixedChallenges[0],
+    duration_ms: null,
+    response: "3",
+    reaction_time_ms: null,
+  });
+
+  assert.equal(accessibleResult.duration_ms, null);
+  assert.equal(accessibleResult.reaction_time_ms, null);
+  assert.deepEqual(
+    (({ duration_ms, reaction_time_ms }) => ({ duration_ms, reaction_time_ms }))(dataset.record(accessibleResult)),
+    { duration_ms: null, reaction_time_ms: null },
+  );
+  assert.throws(() => dataset.record({ ...accessibleResult, reaction_time_ms: 1 }), /non-negative/);
+  assert.throws(() => dataset.record({ ...accessibleResult, duration_ms: 100 }), /non-negative/);
 });
 
 test("withdrawal deletes records and permanently closes collection", () => {

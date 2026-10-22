@@ -55,8 +55,11 @@ export class HumanDataset {
     for (const field of ["challenge_id", "stimulus_id"]) {
       if (typeof input[field] !== "string" || !input[field].trim()) throw new TypeError(`${field} is required`);
     }
-    for (const field of ["duration_ms", "reaction_time_ms"]) {
-      if (!Number.isFinite(input[field]) || input[field] < 0) throw new TypeError(`${field} must be non-negative`);
+    const untimed = input.duration_ms === null && input.reaction_time_ms === null;
+    if (!untimed) {
+      for (const field of ["duration_ms", "reaction_time_ms"]) {
+        if (!Number.isFinite(input[field]) || input[field] < 0) throw new TypeError(`${field} must be non-negative`);
+      }
     }
     if (typeof input.correct !== "boolean") throw new TypeError("correct must be boolean");
     const contract = CHALLENGE_CONTRACTS.get(input.challenge_id);
