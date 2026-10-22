@@ -1,9 +1,16 @@
-const assert = require("node:assert/strict");
-const test = require("node:test");
-const fs = require("node:fs");
-const vm = require("node:vm");
+import assert from "node:assert/strict";
+import test from "node:test";
+import fs from "node:fs";
+import vm from "node:vm";
+import { fileURLToPath } from "node:url";
 
-const { collect } = require("../browser-automation-signals.js");
+const source = fs.readFileSync(
+  fileURLToPath(new URL("../browser-automation-signals.js", import.meta.url)),
+  "utf8",
+);
+const sandbox = { navigator: { webdriver: false } };
+vm.runInNewContext(source, sandbox);
+const { collect } = sandbox.CognitAutomationSignals;
 
 function signal(result, id) {
   return result.signals.find((entry) => entry.id === id);
@@ -53,9 +60,9 @@ test("does not infer a human user from an environment with no known indicators",
 });
 
 test("exposes the collector as a browser global when loaded as a script", () => {
-  const sandbox = { navigator: { webdriver: false } };
-  vm.runInNewContext(fs.readFileSync(require.resolve("../browser-automation-signals.js"), "utf8"), sandbox);
+  const browserSandbox = { navigator: { webdriver: false } };
+  vm.runInNewContext(source, browserSandbox);
 
-  assert.equal(typeof sandbox.CognitAutomationSignals.collect, "function");
-  assert.equal(sandbox.CognitAutomationSignals.collect(sandbox).summary, "no_known_indicators_observed");
+  assert.equal(typeof browserSandbox.CognitAutomationSignals.collect, "function");
+  assert.equal(browserSandbox.CognitAutomationSignals.collect(browserSandbox).summary, "no_known_indicators_observed");
 });
