@@ -7,6 +7,7 @@
   },
   "scripts": {
     "check": "node --experimental-strip-types --check src/cognit/session-engine.ts",
-    "test": "node --experimental-strip-types --test test/session-engine.test.ts"
+    "test": "node --experimental-strip-types --test",
+    "test:python": "python3 -m unittest discover -v"
   }
 }
