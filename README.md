@@ -97,6 +97,45 @@ Scores must be finite numbers from 0 through 100; confidence must be finite from
 
 Run the Python tests with `python3 -m unittest discover -v`.
 
+## Model evaluation harness
+
+`evaluation_runner.py` runs an existing predictor against labeled cases and
+writes a JSON report. Each case supplies `actual_positive`, an `input` value,
+and optionally `human_ground_truth`. The evaluator receives only `input` and
+returns `predicted_positive` (a boolean or `None` for an unknown result) and an
+optional numeric `score` where higher values indicate stronger positive
+evidence.
+
+```python
+from evaluation_runner import run_evaluation, write_report
+
+cases = [
+    {"actual_positive": True, "input": request},
+    {"actual_positive": False, "human_ground_truth": True, "input": human_request},
+]
+report = run_evaluation(cases, existing_predictor, evaluator_name="risk-model-v1")
+write_report(report, "evaluation-report.json")
+```
+
+The positive class is whatever the caller labels `True` (for example, a case
+flagged as automation). Unknown predictions are excluded from confusion-matrix
+denominators and reported in `excluded_unknown`. Precision is TP/(TP+FP), recall
+is TP/(TP+FN), FPR is FP/(FP+TN), and FNR is FN/(FN+TP); each report entry
+includes its numerator and denominator. A zero denominator produces a null
+value and an unavailable reason. AUC uses the optional ranking score, handles
+ties by average rank, reports positive/negative pair counts, and is unavailable
+unless scored rows include both classes. Human FPR is calculated separately
+from rows explicitly marked `human_ground_truth: true` whose actual label is
+negative and prediction is known; its eligible human denominator is shown in
+the report.
+
+Latency measures only the evaluator call, in milliseconds, and reports the
+mean, median, and call count. The JSON report omits timestamps and records the
+evaluator name. Metric output is stable for the same cases, predictions, and
+measured latencies; observed latency naturally varies between real runs. The
+harness computes metrics for caller-supplied
+models or rules and does not select thresholds or compare feature groups.
+
 ## Signed verification tokens
 
 `verification_token.py` provides a framework-neutral server-side token issuer and verifier. Configure one random secret of at least 32 bytes per application on the server; never send these secrets to a client. After the server confirms that a session is authorized for an action, call `VerificationTokenService.issue` with the application, site, session, and action IDs. Send the resulting token to the trusted verification service.
