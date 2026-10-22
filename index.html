@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="A consent-based human perception study pilot.">
-    <title>Cognit — Human dataset pilot</title>
+    <meta name="description" content="A consent-based perception pilot with visual and accessible text challenge presentations.">
+    <title>Cognit — Perception pilot</title>
     <link rel="stylesheet" href="styles.css">
     <script type="module" src="src/app.js"></script>
   </head>
@@ -12,8 +12,8 @@
     <main>
       <header>
         <p class="eyebrow">COGNIT · PERCEPTION PILOT</p>
-        <h1>Human dataset pilot</h1>
-        <p>Take part in a short visual perception study. Participation is voluntary.</p>
+        <h1>Accessible perception challenge</h1>
+        <p>Take part in a short, voluntary study. Choose a visual timed or accessible text presentation, then tell us what you noticed.</p>
       </header>
 
       <section class="panel" aria-labelledby="consent-title" id="consent-panel">
@@ -30,20 +30,29 @@
         <h2 id="setup-title">Set up your challenge</h2>
         <label for="challenge">Challenge</label>
         <select id="challenge"></select>
-        <label for="duration">Pattern display time</label>
-        <select id="duration">
-          <option value="50">50 milliseconds</option>
-          <option value="100" selected>100 milliseconds</option>
-          <option value="200">200 milliseconds</option>
-          <option value="500">500 milliseconds</option>
+        <label for="presentation">Challenge presentation</label>
+        <select id="presentation" aria-describedby="presentation-help">
+          <option value="visual">Visual, timed pattern</option>
+          <option value="text">Accessible text pattern (untimed)</option>
         </select>
+        <p id="presentation-help">Both presentations use the same challenge and answer.</p>
+        <div id="duration-setting">
+          <label for="duration">Pattern display time</label>
+          <select id="duration">
+            <option value="50">50 milliseconds</option>
+            <option value="100" selected>100 milliseconds</option>
+            <option value="200">200 milliseconds</option>
+            <option value="500">500 milliseconds</option>
+          </select>
+        </div>
         <button id="start">Start challenge</button>
       </section>
 
       <section id="challenge-area" class="panel" aria-live="polite" hidden>
-        <h2 id="prompt-title">Look at the pattern</h2>
+        <h2 id="prompt-title" tabindex="-1">Look at the pattern</h2>
         <p id="instruction"></p>
         <div id="stimulus" class="stimulus" role="img"></div>
+        <ol id="accessible-stimulus" class="accessible-stimulus" aria-label="Pattern sequence in reading order" hidden></ol>
         <form id="answer-form" hidden>
           <label id="answer-label" for="answer"></label>
           <div class="answer-row">

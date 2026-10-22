@@ -28,6 +28,19 @@ test("result contains the attempt contract and normalizes simple answer differen
   assert.equal(normalizeResponse("  Green "), "green");
 });
 
+test("untimed accessible attempts retain the same correctness and omit timing evidence", () => {
+  const challenge = fixedChallenges[1];
+  const result = createResult({ challenge, duration_ms: null, response: "4", reaction_time_ms: null });
+  const timedResult = createResult({ challenge, duration_ms: 100, response: "4", reaction_time_ms: 500 });
+
+  assert.equal(result.correct, true);
+  assert.equal(result.correct, timedResult.correct);
+  assert.equal(result.duration_ms, null);
+  assert.equal(result.reaction_time_ms, null);
+  assert.equal("presentation" in result, false);
+  assert.equal(createResult({ challenge, duration_ms: null, response: "3", reaction_time_ms: null }).correct, false);
+});
+
 test("an attempt recorder accepts only its first completed submission", () => {
   const recordAttempt = createAttemptRecorder();
   const firstResult = { response: "3" };

@@ -41,7 +41,9 @@ export function createResult({ challenge, duration_ms, response, reaction_time_m
     duration_ms,
     response: String(response).trim(),
     correct: normalized === normalizeResponse(challenge.expected_answer),
-    reaction_time_ms: Math.max(0, Math.round(reaction_time_ms))
+    reaction_time_ms: Number.isFinite(reaction_time_ms)
+      ? Math.max(0, Math.round(reaction_time_ms))
+      : null
   };
 }
 
