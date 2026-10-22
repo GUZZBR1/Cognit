@@ -24,7 +24,8 @@
   "limitations": [
     "No group result implies universal separation of humans and automation.",
     "Browser indicators are experimental signals; missing indicators do not establish human operation.",
-    "Within-session attempts are summarized per session before uncertainty is estimated.",
+    "Within-cluster attempts are grouped before uncertainty is estimated.",
+    "Human consent pseudonyms may change on repeat consent; they do not deduplicate people across consent episodes, so human uncertainty is not a person-level estimate.",
     "A report with unavailable groups or metrics makes no inference about them."
   ],
   "protocol": {
@@ -36,7 +37,7 @@
     "human_false_positive_rate": "explicit predicted_automation=true / confirmed human attempts with a boolean prediction and non-empty prediction_provenance.method, origin, and version.",
     "human_inclusion": "HUMAN_CONFIRMED=true plus non-empty method, origin, and procedure from independent review.",
     "name": "Cognit Human vs Automation descriptive benchmark",
-    "uncertainty": "95% percentile cluster bootstrap resampling independent sessions; continuous summaries use per-session means and rates pool observations; 2,000 replicates; deterministic per group and metric. Unavailable below two sessions.",
+    "uncertainty": "95% percentile cluster bootstrap resampling observed clusters; continuous summaries use unweighted per-cluster means and rates pool attempts. Automation clusters use session_id; human clusters use consent pseudonyms, which identify consent episodes rather than verified unique people. 2,000 replicates; deterministic per group and metric. Unavailable below two clusters.",
     "version": "1"
   },
   "report_version": 1

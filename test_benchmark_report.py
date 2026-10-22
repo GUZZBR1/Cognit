@@ -55,14 +55,14 @@ class BenchmarkReportTests(unittest.TestCase):
 
         self.assertEqual(group["status"], "available")
         self.assertEqual(group["sample"], {
-            "sessions": 2, "attempts": 2, "accuracy_eligible_attempts": 2,
+            "clusters": 2, "cluster_unit": "session_id", "attempts": 2, "accuracy_eligible_attempts": 2,
             "independently_confirmed_human_attempts": 0,
         })
         self.assertEqual(group["metrics"]["accuracy"]["numerator"], 1)
         self.assertEqual(group["metrics"]["accuracy"]["denominator"], 2)
         self.assertEqual(group["metrics"]["reaction_time_ms"]["mean"], 200)
         self.assertEqual(group["metrics"]["reaction_time_ms"]["uncertainty_95"]["method"],
-                         "percentile bootstrap resampling independent session summaries")
+                         "percentile bootstrap resampling cluster summaries")
         self.assertEqual(group["metrics"]["accuracy"]["value"], 0.5)
         self.assertEqual(group["mouse_features"]["pauseCount"]["count"], 1)
         self.assertEqual(group["browser_signals"]["navigator_webdriver"]["denominator"], 1)
@@ -94,6 +94,32 @@ class BenchmarkReportTests(unittest.TestCase):
         self.assertEqual(group["metrics"]["human_false_positive_rate"]["numerator"], 1)
         self.assertEqual(group["metrics"]["human_false_positive_rate"]["denominator"], 2)
         self.assertEqual(group["metrics"]["reaction_time_ms"]["uncertainty_95"]["confidence_level"], 0.95)
+        self.assertEqual(group["sample"]["cluster_unit"], "consent_pseudonym")
+
+    def test_repeated_human_attempts_share_a_consent_cluster_not_independent_sessions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = self.write_json(directory, "human.json", {
+                "schema_version": 1,
+                "records": [
+                    {
+                        "pseudonym": "same-consent", "HUMAN_CONFIRMED": True,
+                        "human_confirmation": {"method": "review", "origin": "observed", "procedure": "v1"},
+                        "correct": index == 0, "reaction_time_ms": 100 + index,
+                        "duration_ms": 50,
+                    }
+                    for index in range(3)
+                ],
+            })
+            group = build_report({"human": path})["groups"]["human"]
+
+        self.assertEqual(group["sample"]["clusters"], 1)
+        self.assertEqual(group["sample"]["cluster_unit"], "consent_pseudonym")
+        self.assertEqual(group["sample"]["attempts"], 3)
+        self.assertEqual(group["metrics"]["accuracy"]["cluster_count"], 1)
+        self.assertEqual(
+            group["metrics"]["accuracy"]["uncertainty_95"]["unavailable_reason"],
+            "requires_at_least_two_clusters",
+        )
 
     def test_human_without_operator_confirmation_stays_unavailable(self):
         with tempfile.TemporaryDirectory() as directory:

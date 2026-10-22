@@ -201,12 +201,16 @@ available only if an input record explicitly supplies `completion_time_ms`.
 Challenge performance is broken out by challenge ID. Browser signal rates are
 reported only for observed boolean signals. Metrics include counts and
 denominators. The 95% uncertainty interval uses a deterministic percentile
-cluster bootstrap over independent sessions (2,000 replicates); continuous
-summaries use per-session means and rates pool observations. It is marked
-unavailable with fewer than two sessions. Session IDs are used only in memory
-to aggregate attempts and are not copied to the report. Each source file's
-SHA-256 digest and recorded runner/browser versions are included for
-reproducibility; missing version metadata is stated as `not_recorded`.
+cluster bootstrap over observed clusters (2,000 replicates); continuous
+summaries use per-cluster means and rates pool observations. Automation
+clusters use session IDs; human clusters use consent pseudonyms. A human
+pseudonym identifies a consent episode, not a verified unique person, so the
+human interval is not a person-level estimate and repeat consent may create
+multiple clusters for one person. Intervals are unavailable with fewer than
+two clusters. Cluster IDs are used only in memory and are not copied to the
+report. Each source file's SHA-256 digest and recorded runner/browser versions
+are included for reproducibility; missing version metadata is stated as
+`not_recorded`.
 
 With no arguments, the command writes a protocol-only report and marks all four
 groups unavailable. It does not generate or simulate participant data.
