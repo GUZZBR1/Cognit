@@ -7,6 +7,8 @@ const stimulus = $("stimulus");
 const form = $("answer-form");
 const answer = $("answer");
 const resultArea = $("result-area");
+const adAnswerForm = $("ad-answer-form");
+const adAnswer = $("ad-answer");
 let answerStartedAt;
 let activeResult;
 let activeChallenge;
@@ -99,4 +101,23 @@ $("download").addEventListener("click", () => {
   link.download = `${activeResult.challenge_id}-result.json`;
   link.click();
   URL.revokeObjectURL(url);
+});
+
+$("show-ad").addEventListener("click", () => {
+  $("ad-content").hidden = false;
+  adAnswerForm.hidden = false;
+  adAnswerForm.reset();
+  adAnswer.disabled = false;
+  adAnswerForm.querySelector('button[type="submit"]').disabled = false;
+  $("ad-status").textContent = "Demo ad shown. Answer the question to complete this optional experiment.";
+});
+
+adAnswerForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  if (!adAnswerForm.reportValidity()) return;
+
+  const isCorrect = adAnswer.value === "aurora";
+  adAnswer.disabled = true;
+  adAnswerForm.querySelector('button[type="submit"]').disabled = true;
+  $("ad-status").textContent = `${isCorrect ? "Correct" : "Demo complete"}. This response is only part of an ad interaction experiment; it does not affect security checks or prove that anyone is human.`;
 });
