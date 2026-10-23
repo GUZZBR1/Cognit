@@ -17,7 +17,7 @@
   ],
   "scripts": {
     "check": "node --experimental-strip-types --check src/cognit/session-engine.ts && node --experimental-strip-types --check src/cognit/history-profile-engine.ts && node --experimental-strip-types --check src/cognit/ad-campaign-schema.ts",
-    "test": "node --experimental-strip-types --test",
+    "test": "npm run build:sdk && node --experimental-strip-types --test",
     "test:python": "python3 -m unittest discover -v",
     "build:sdk": "tsc -p tsconfig.sdk.json",
     "test:sdk": "npm run build:sdk && node --test test/sdk/client-sdk.test.js",
