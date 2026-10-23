@@ -15,11 +15,12 @@ class BenchmarkReportTests(unittest.TestCase):
     def test_missing_groups_are_unavailable_without_inferred_metrics(self):
         report = build_report({})
         self.assertEqual(report, build_report({}))
+        self.assertEqual(report["evidence_class"], "UNAVAILABLE")
         self.assertEqual(set(report["groups"]), {"human", "playwright", "selenium", "puppeteer"})
         for group in report["groups"].values():
-            self.assertEqual(group["status"], "unavailable")
+            self.assertEqual(group["status"], "UNAVAILABLE")
             self.assertEqual(group["reason"], "no_dataset_supplied")
-        self.assertIn("95% percentile cluster bootstrap", report["protocol"]["uncertainty"])
+        self.assertIn("95% Clopper-Pearson exact binomial", report["protocol"]["uncertainty"])
         self.assertEqual(len(report["protocol"]["challenge_set_sha256"]), 64)
 
     def test_automation_aggregates_rates_features_versions_and_session_uncertainty(self):
@@ -53,7 +54,7 @@ class BenchmarkReportTests(unittest.TestCase):
             })
             group = build_report({"selenium": path})["groups"]["selenium"]
 
-        self.assertEqual(group["status"], "available")
+        self.assertEqual(group["status"], "AVAILABLE")
         self.assertEqual(group["sample"], {
             "clusters": 2, "cluster_unit": "session_id", "attempts": 2, "accuracy_eligible_attempts": 2,
             "independently_confirmed_human_attempts": 0,
@@ -91,8 +92,8 @@ class BenchmarkReportTests(unittest.TestCase):
 
         self.assertEqual(group["sample"]["attempts"], 2)
         self.assertEqual(group["metrics"]["accuracy"]["denominator"], 2)
-        self.assertEqual(group["metrics"]["human_false_positive_rate"]["numerator"], 1)
-        self.assertEqual(group["metrics"]["human_false_positive_rate"]["denominator"], 2)
+        self.assertEqual(group["metrics"]["legacy_predicted_automation_rate_secondary"]["numerator"], 1)
+        self.assertEqual(group["metrics"]["legacy_predicted_automation_rate_secondary"]["denominator"], 2)
         self.assertEqual(group["metrics"]["reaction_time_ms"]["uncertainty_95"]["confidence_level"], 0.95)
         self.assertEqual(group["sample"]["cluster_unit"], "consent_pseudonym")
 
@@ -128,7 +129,7 @@ class BenchmarkReportTests(unittest.TestCase):
                 "records": [{"pseudonym": "p-1", "correct": True}],
             })
             group = build_report({"human": path})["groups"]["human"]
-        self.assertEqual(group["status"], "unavailable")
+        self.assertEqual(group["status"], "UNAVAILABLE")
         self.assertEqual(group["reason"], "no_independently_confirmed_human_records")
 
     def test_human_null_timing_and_missing_prediction_are_unavailable(self):
@@ -144,8 +145,64 @@ class BenchmarkReportTests(unittest.TestCase):
             metrics = build_report({"human": path})["groups"]["human"]["metrics"]
         self.assertIsNone(metrics["reaction_time_ms"]["mean"])
         self.assertEqual(metrics["reaction_time_ms"]["unavailable_reason"], "no_eligible_observations")
-        self.assertEqual(metrics["human_false_positive_rate"]["denominator"], 0)
-        self.assertIsNone(metrics["human_false_positive_rate"]["value"])
+        self.assertEqual(metrics["legacy_predicted_automation_rate_secondary"]["denominator"], 0)
+        self.assertIsNone(metrics["legacy_predicted_automation_rate_secondary"]["value"])
+
+
+    def test_primary_human_endpoint_uses_one_earliest_session_per_participant(self):
+        fixture = Path(__file__).parent / "fixtures/benchmark-v1/human-zero.json"
+        endpoint = build_report({"human": fixture})["endpoints"]["human_false_positive_rate"]
+        self.assertEqual(endpoint["status"], "AVAILABLE")
+        self.assertEqual(endpoint["participants"], 2)
+        self.assertEqual(endpoint["sessions_considered"], 3)
+        self.assertEqual(endpoint["numerator"], 0)
+        self.assertEqual(endpoint["denominator"], 2)
+        self.assertEqual(endpoint["interval_95"]["method"], "two-sided Clopper-Pearson exact binomial interval")
+        self.assertGreater(endpoint["interval_95"]["upper"], 0)
+
+    def test_primary_endpoint_counts_outcomes_and_excludes_oracle_records(self):
+        fixture = Path(__file__).parent / "fixtures/benchmark-v1/automation.json"
+        report = build_report({"selenium": fixture})
+        endpoint = report["endpoints"]
+        self.assertEqual(endpoint["challenge_applied"]["outcomes"]["CHALLENGE"], 1)
+        self.assertEqual(endpoint["automation_escape_to_protected_action"]["denominator"], 1)
+        self.assertEqual(endpoint["automation_escape_to_protected_action"]["numerator"], 1)
+        self.assertEqual(report["groups"]["selenium"]["sample"]["attempts"], 1)
+
+    def test_primary_human_endpoint_is_unavailable_for_unknown_or_missing_group(self):
+        unknown = Path(__file__).parent / "fixtures/benchmark-v1/unknown-outcome.json"
+        report = build_report({"human": unknown})
+        endpoint = report["endpoints"]["human_false_positive_rate"]
+        self.assertEqual(endpoint["status"], "UNAVAILABLE")
+        self.assertIsNone(endpoint["denominator"])
+        empty = Path(__file__).parent / "fixtures/benchmark-v1/empty-group.json"
+        group = build_report({"human": empty})["groups"]["human"]
+        self.assertEqual(group["status"], "UNAVAILABLE")
+        self.assertFalse("metrics" in group)
+
+    def test_positive_exact_interval_is_bounded_and_trial_record_adapter_is_accepted(self):
+        positive = Path(__file__).parent / "fixtures/benchmark-v1/human-positive.json"
+        endpoint = build_report({"human": positive})["endpoints"]["human_false_positive_rate"]
+        self.assertEqual((endpoint["numerator"], endpoint["denominator"]), (2, 2))
+        self.assertLess(endpoint["interval_95"]["lower"], 1)
+        trial = Path(__file__).parent / "fixtures/benchmark-v1/trial-record-v1.json"
+        report = build_report({"selenium": trial})
+        self.assertNotIn("metrics", report["groups"]["selenium"])
+        self.assertEqual(report["groups"]["selenium"]["reason"], "no_non_oracle_eligible_records")
+
+    def test_invalid_trial_record_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = self.write_json(directory, "trial.json", {"schema_version": 1, "trial_records": [{"session_id": "s1"}]})
+            with self.assertRaisesRegex(ValueError, "incomplete TrialRecord v1"):
+                build_report({"selenium": path})
+
+    def test_automation_session_ids_are_scoped_to_runner_group(self):
+        with tempfile.TemporaryDirectory() as directory:
+            playwright = self.write_json(directory, "playwright.json", {"schema_version": 1, "session_id": "same", "attempts": [{"session_id": "same", "policy_outcome": "CHALLENGE", "protected_action_reached": True}]})
+            selenium = self.write_json(directory, "selenium.json", {"schema_version": 1, "session_id": "same", "attempts": [{"session_id": "same", "policy_outcome": "CHALLENGE", "protected_action_reached": False}]})
+            rate = build_report({"playwright": playwright, "selenium": selenium})["endpoints"]["automation_escape_to_protected_action"]
+        self.assertEqual(rate["denominator"], 2)
+        self.assertEqual(rate["numerator"], 1)
 
     def test_invalid_schema_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
