@@ -1,0 +1,34 @@
+{
+  "manifest_version": "1.0.0",
+  "manifest_id": "run-unknown-001",
+  "study_id": "challenge-accessibility-pilot",
+  "protocol_version": "1.0.0",
+  "cognit_commit": "0123456789abcdef0123456789abcdef01234567",
+  "created_at": "2026-10-22T12:00:00Z",
+  "environment": {
+    "browser": "UnknownBrowser",
+    "browser_version": "UNKNOWN",
+    "os": "UNKNOWN",
+    "os_version": "UNKNOWN"
+  },
+  "actor": {
+    "type": "UNKNOWN",
+    "version": "UNKNOWN"
+  },
+  "challenge_set": {
+    "id": "choice-v1",
+    "version": "1.0.0"
+  },
+  "seed": 1,
+  "config": {
+    "challenge_count": 3,
+    "mode": "standard",
+    "locale": "pt-BR"
+  },
+  "config_sha256": "9c00758bd2e5030bc0c6d937ada2ff5073c667b981ea98bf9acd657fae99bcc4",
+  "accessible_mode": "NOT_APPLICABLE",
+  "evidence_class": "SIMULATED",
+  "result": "UNKNOWN",
+  "observations": [],
+  "manifest_sha256": "e54373ce12ecae3e528ed124c3c07cbe66e1ca06f9f0cfa887c07294865cbd92"
+}

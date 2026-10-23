@@ -49,3 +49,4 @@ Install this branch's development dependencies with `npm install`. Run the suite
 - Nested Go modules: run `go test ./...` inside `go/session` and `go/decisionpolicy`.
 - Browser SDK: `npm run test:sdk`
 - Experimental Python: `npm run test:python`
+- Trial Manifest v1 fixtures and validator: `node scripts/trial-manifest.mjs` and `npm run test:trial-manifest` (see [the contract](docs/trial-manifest-v1.md))

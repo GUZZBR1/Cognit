@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cognit.dev/schemas/trial-manifest-v1.schema.json",
+  "title": "Cognit Trial Manifest v1",
+  "description": "Immutable, run-level description of an experimental execution. This is not evidence that the run occurred.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["manifest_version", "manifest_id", "manifest_sha256", "study_id", "protocol_version", "cognit_commit", "created_at", "environment", "actor", "challenge_set", "seed", "config", "config_sha256", "accessible_mode", "evidence_class", "result", "observations"],
+  "properties": {
+    "manifest_version": { "const": "1.0.0" },
+    "manifest_id": { "type": "string", "minLength": 1 },
+    "manifest_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$", "description": "SHA-256 of canonical manifest JSON with manifest_sha256 omitted." },
+    "study_id": { "type": "string", "minLength": 1 },
+    "protocol_version": { "const": "1.0.0" },
+    "cognit_commit": { "type": "string", "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "environment": {
+      "type": "object", "additionalProperties": false,
+      "required": ["browser", "browser_version", "os", "os_version"],
+      "properties": {
+        "browser": { "type": "string", "minLength": 1 },
+        "browser_version": { "type": "string", "minLength": 1 },
+        "os": { "type": "string", "minLength": 1 },
+        "os_version": { "type": "string", "minLength": 1 }
+      }
+    },
+    "actor": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "version"],
+      "properties": {
+        "type": { "enum": ["HUMAN", "SCRIPTED_AUTOMATION", "AI_AGENT", "UNKNOWN"] },
+        "version": { "type": "string", "minLength": 1 }
+      }
+    },
+    "challenge_set": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "version"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 }
+      }
+    },
+    "seed": { "type": ["string", "integer"], "minimum": -9007199254740991, "maximum": 9007199254740991 },
+    "config": { "type": "object" },
+    "config_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "accessible_mode": { "enum": ["STANDARD", "ACCESSIBLE", "NOT_APPLICABLE"] },
+    "evidence_class": { "enum": ["SIMULATED", "OBSERVED", "REPLAYED"] },
+    "result": { "enum": ["PASS", "FAIL", "UNKNOWN"] },
+    "ground_truth": {
+      "type": "object", "additionalProperties": false,
+      "required": ["label", "provenance"],
+      "properties": {
+        "label": { "enum": ["HUMAN", "SCRIPTED_AUTOMATION", "AI_AGENT", "UNKNOWN"] },
+        "provenance": { "enum": ["independent_human_confirmation", "dataset_label", "external_oracle"] },
+        "reference": { "type": "string", "minLength": 1 }
+      }
+    },
+    "observations": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["source", "value"],
+        "properties": {
+          "source": { "enum": ["risk_score", "policy", "classifier", "other"] },
+          "value": {},
+          "version": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}
