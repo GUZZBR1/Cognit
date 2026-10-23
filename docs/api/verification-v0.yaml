@@ -236,6 +236,12 @@ components:
         session_id: { type: string }
         state: { type: string, enum: [active, expired] }
         attempt_state: { type: string, enum: [pending, succeeded, failed] }
+        token:
+          type: string
+          minLength: 1
+          description: >-
+            Server-issued, single-use token. Present only when attempt_state is
+            succeeded; keep it server-side and validate it for the intended action.
       required: [session_id, state, attempt_state]
     ValidateTokenRequest:
       type: object
