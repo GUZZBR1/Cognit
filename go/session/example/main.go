@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/cognit-verify/cognit/go/session"
+	"github.com/GUZZBR1/Cognit/go/session"
 )
 
 func main() {
