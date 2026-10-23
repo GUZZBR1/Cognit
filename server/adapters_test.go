@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cognit-verify/cognit/server"
+	"github.com/GUZZBR1/Cognit/server"
 )
 
 type trackedSessions struct {

@@ -1,3 +1,3 @@
-module github.com/cognit-verify/cognit
+module github.com/GUZZBR1/Cognit
 
 go 1.22

@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/cognit-verify/cognit/journey"
+	"github.com/GUZZBR1/Cognit/journey"
 )
 
 func main() {

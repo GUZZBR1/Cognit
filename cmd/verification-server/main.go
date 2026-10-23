@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/cognit-verify/cognit/server"
+	"github.com/GUZZBR1/Cognit/server"
 )
 
 func main() {
