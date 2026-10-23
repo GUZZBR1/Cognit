@@ -81,3 +81,4 @@ Validate and export per-attempt experimental records with `npm run test:trial-re
 - Trial Manifest v1 fixtures and validator: `node scripts/trial-manifest.mjs` and `npm run test:trial-manifest` (see [the contract](docs/trial-manifest-v1.md))
 - Human confirmation pilot: `npm run test:human-confirmation` and `node examples/human-confirmation/main.js`
 - Scripted automation: `npm run test:scripted-automation`
+- Experimental pipeline integration targets `experiments/beta-lab`; production remains on `main`. TrialRecord v1 → QC/export → benchmark fixtures and protocol limits are documented in [experimental pipeline readiness](docs/experimental-pipeline-readiness-v1.md).

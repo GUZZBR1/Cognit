@@ -40,6 +40,13 @@ function clean(record, studyId, pseudonymKey) {
     for (const key of ['risk_score', 'prediction', 'policy']) {
       if (Object.hasOwn(observations, key)) safe[key] = observations[key];
     }
+    if (Object.hasOwn(observations, 'protected_action_reached')) safe.protected_action_reached = observations.protected_action_reached;
+    if (observations.protected_action_reached_provenance) {
+      safe.protected_action_reached_provenance = {
+        ...observations.protected_action_reached_provenance,
+        trial_id: pseudonymizeId('trial', observations.protected_action_reached_provenance.trial_id, studyId, pseudonymKey)
+      };
+    }
     if (Object.keys(safe).length) row.outcome.observations = safe;
   }
   return row;
@@ -57,16 +64,28 @@ function validUtcTimestamp(value) {
   return Number.isFinite(timestamp) ? timestamp : null;
 }
 
-function validateObservations(observations, index, error) {
+function validateObservations(observations, index, error, record) {
   if (observations === undefined) return;
   if (!observations || typeof observations !== 'object' || Array.isArray(observations)) {
     error(index, 'observations', 'observations must be an object');
     return;
   }
-  if (Object.keys(observations).some(key => !['risk_score', 'prediction', 'policy'].includes(key))) error(index, 'observations', 'Only risk_score, prediction, and policy observations are allowed');
+  if (Object.keys(observations).some(key => !['risk_score', 'prediction', 'policy', 'protected_action_reached', 'protected_action_reached_provenance'].includes(key))) error(index, 'observations', 'Unsupported observation field');
   if (Object.hasOwn(observations, 'risk_score') && !(typeof observations.risk_score === 'number' && Number.isFinite(observations.risk_score) && observations.risk_score >= 0 && observations.risk_score <= 1)) error(index, 'risk_score', 'risk_score must be a finite number from 0 to 1');
   if (Object.hasOwn(observations, 'prediction') && !(typeof observations.prediction === 'string' && ['human', 'automation', 'ai_agent', 'unknown'].includes(observations.prediction))) error(index, 'prediction', 'prediction must be a documented scalar category');
   if (Object.hasOwn(observations, 'policy') && !(typeof observations.policy === 'string' && ['allow', 'block', 'challenge', 'unknown'].includes(observations.policy))) error(index, 'policy', 'policy must be a documented scalar category');
+  const hasProtectedAction = Object.hasOwn(observations, 'protected_action_reached');
+  const reached = observations.protected_action_reached;
+  if (hasProtectedAction && reached !== null && typeof reached !== 'boolean') error(index, 'protected_action_reached', 'protected_action_reached must be true, false, or null');
+  const actionProvenance = observations.protected_action_reached_provenance;
+  if (actionProvenance !== undefined) {
+    if (!actionProvenance || typeof actionProvenance !== 'object' || Array.isArray(actionProvenance) || Object.keys(actionProvenance).some(key => !['trial_id', 'source', 'method', 'origin', 'observed_at'].includes(key)) || !isOpaqueId(actionProvenance.trial_id) || !actionProvenance.trial_id.startsWith('trial-') || ['source', 'method', 'origin'].some(key => typeof actionProvenance[key] !== 'string' || !actionProvenance[key].trim()) || validUtcTimestamp(actionProvenance.observed_at) === null) {
+      error(index, 'protected_action_provenance', 'Protected-action provenance requires this trial ID, non-empty source, method, and origin, and a valid UTC observed_at');
+    } else if (actionProvenance.trial_id !== record.trial_id) {
+      error(index, 'protected_action_provenance', 'Protected-action provenance must refer to this exact trial attempt');
+    }
+  }
+  if (hasProtectedAction && reached !== null && !actionProvenance) error(index, 'protected_action_provenance', 'A known protected-action value requires observation provenance');
 }
 
 function containsUnsafeJsonValue(value, seen = new Set()) {
@@ -88,7 +107,8 @@ export function validateRecords(records, manifest, { pseudonymKey = process.env.
   if (!Array.isArray(records)) return { valid: false, errors: [{ index: null, code: 'records_type', message: 'Input must be an array' }], accepted_indices: [], accepted_count: 0, rejected_records: [] };
   const manifestPayload = manifest && Object.fromEntries(Object.entries(manifest).filter(([key]) => key !== 'sha256'));
   const actualManifestHash = manifestPayload ? sha(canonical(manifestPayload)) : null;
-  const manifestValid = !!manifest && isOpaqueId(manifest.manifest_id) && typeof manifest.version === 'string' && /^\d+\.\d+\.\d+$/.test(manifest.version) && typeof manifest.study_id === 'string' && !!manifest.study_id && typeof manifest.protocol_version === 'string' && !!manifest.protocol_version && Array.isArray(manifest.challenge_ids) && manifest.challenge_ids.length > 0 && manifest.challenge_ids.every(isOpaqueId) && /^[a-f0-9]{64}$/.test(manifest.config_hash ?? '') && manifest.sha256 === actualManifestHash;
+  const evidenceClassValid = manifest?.evidence_class === undefined || ['SIMULATED', 'OBSERVED', 'REPLAYED'].includes(manifest.evidence_class);
+  const manifestValid = !!manifest && isOpaqueId(manifest.manifest_id) && typeof manifest.version === 'string' && /^\d+\.\d+\.\d+$/.test(manifest.version) && typeof manifest.study_id === 'string' && !!manifest.study_id && typeof manifest.protocol_version === 'string' && !!manifest.protocol_version && Array.isArray(manifest.challenge_ids) && manifest.challenge_ids.length > 0 && manifest.challenge_ids.every(isOpaqueId) && /^[a-f0-9]{64}$/.test(manifest.config_hash ?? '') && evidenceClassValid && manifest.sha256 === actualManifestHash;
   if (!manifestValid) error(null, 'manifest_hash', 'Manifest must have study, protocol, id, version, and a sha256 matching its canonical content');
   const idCounts = new Map();
   for (const record of records) if (record && typeof record.trial_id === 'string' && record.trial_id.trim()) idCounts.set(record.trial_id, (idCounts.get(record.trial_id) ?? 0) + 1);
@@ -145,7 +165,7 @@ export function validateRecords(records, manifest, { pseudonymKey = process.env.
     const duration = record.outcome?.duration_ms;
     if (duration !== null && !(typeof duration === 'number' && Number.isFinite(duration) && duration >= 0)) error(index, 'duration', 'duration_ms must be null or a finite non-negative number');
     if (start !== null && end !== null && typeof duration === 'number' && Number.isFinite(duration) && Math.abs(duration - (end - start)) > 1) error(index, 'duration_mismatch', 'duration_ms disagrees with timestamps');
-    validateObservations(record.outcome?.observations, index, error);
+    validateObservations(record.outcome?.observations, index, error, record);
   });
   const errorsByIndex = new Map();
   for (const item of errors) {
@@ -163,7 +183,7 @@ export function exportJsonl(records, manifest, { pseudonymKey = process.env.TRIA
   const compare = (left, right) => left < right ? -1 : left > right ? 1 : 0;
   const rows = qc.accepted_indices.map(index => clean(records[index], manifest.study_id, pseudonymKey)).sort((a, b) => compare(a.session_id, b.session_id) || compare(a.trial_id, b.trial_id));
   const artifactHash = sha(rows.map(canonical).join('\n'));
-  const header = { type: 'trial-record-export', contract_version: CONTRACT_VERSION, artifact_hash: artifactHash, qc_report: { valid: qc.valid, total_count: Array.isArray(records) ? records.length : 0, accepted_count: qc.accepted_count, rejected_count: qc.rejected_records.length, rejected_records: qc.rejected_records, errors: qc.errors.filter(item => item.index === null) } };
+  const header = { type: 'trial-record-export', contract_version: CONTRACT_VERSION, ...(manifest?.evidence_class === undefined ? {} : { source_evidence_class: manifest.evidence_class }), artifact_hash: artifactHash, qc_report: { valid: qc.valid, total_count: Array.isArray(records) ? records.length : 0, accepted_count: qc.accepted_count, rejected_count: qc.rejected_records.length, rejected_records: qc.rejected_records, errors: qc.errors.filter(item => item.index === null) } };
   return `${canonical(header)}\n${rows.map(canonical).join('\n')}${rows.length ? '\n' : ''}`;
 }
 

@@ -12,5 +12,6 @@
     "challenge-0000000000000006"
   ],
   "config_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-  "sha256": "2759c0c2769510cb36b4b897d2f4c7b019db20e05cd4ab14ef29ed3bdc82495f"
+  "sha256": "28c2c44c170210cc08dd1f6cdc7202a175db4073039dd0ab244a18abb371af85",
+  "evidence_class": "SIMULATED"
 }

@@ -27,6 +27,54 @@ test('UNKNOWN stays unlabeled and risk/prediction/policy are observations only',
   assert.equal(row.outcome.observations.risk_score, 0.2);
   assert.equal(validateRecords([row], manifest).valid, true);
 });
+test('protected-action observations preserve tri-state values and attempt-scoped provenance', () => {
+  const row = structuredClone(records[0]);
+  row.outcome.observations.protected_action_reached = true;
+  row.outcome.observations.protected_action_reached_provenance = {
+    trial_id: row.trial_id, source: 'browser event log', method: 'observed click outcome', origin: 'instrumentation', observed_at: row.ended_at
+  };
+  assert.equal(validateRecords([row], manifest).valid, true);
+  const output = exportJsonl([row], manifest);
+  const exported = JSON.parse(output.split('\n')[1]);
+  assert.equal(exported.outcome.observations.protected_action_reached, true);
+  assert.deepEqual(exported.outcome.observations.protected_action_reached_provenance, {
+    ...row.outcome.observations.protected_action_reached_provenance,
+    trial_id: exported.trial_id
+  });
+
+  for (const value of [false, null]) {
+    const candidate = structuredClone(row);
+    candidate.outcome.observations.protected_action_reached = value;
+    if (value === null) delete candidate.outcome.observations.protected_action_reached_provenance;
+    assert.equal(validateRecords([candidate], manifest).valid, true);
+    const exportedValue = JSON.parse(exportJsonl([candidate], manifest).split('\n')[1]).outcome.observations.protected_action_reached;
+    assert.equal(exportedValue, value);
+  }
+
+  const unknown = structuredClone(records[0]);
+  assert.equal(validateRecords([unknown], manifest).valid, true);
+  const absentExport = JSON.parse(exportJsonl([unknown], manifest).split('\n')[1]);
+  assert.equal(Object.hasOwn(absentExport.outcome.observations ?? {}, 'protected_action_reached'), false);
+});
+test('rejects malformed protected-action values and provenance not tied to this attempt', () => {
+  const row = structuredClone(records[0]);
+  row.outcome.observations.protected_action_reached = false;
+  row.outcome.observations.protected_action_reached_provenance = {
+    trial_id: row.trial_id, source: 'observer', method: 'direct observation', origin: 'browser', observed_at: row.ended_at
+  };
+  const malformed = structuredClone(row);
+  malformed.outcome.observations.protected_action_reached = 'false';
+  assert.ok(validateRecords([malformed], manifest).errors.some(e => e.code === 'protected_action_reached'));
+  const missing = structuredClone(row);
+  delete missing.outcome.observations.protected_action_reached_provenance;
+  assert.ok(validateRecords([missing], manifest).errors.some(e => e.code === 'protected_action_provenance'));
+  const otherAttempt = structuredClone(row);
+  otherAttempt.outcome.observations.protected_action_reached_provenance.trial_id = records[1].trial_id;
+  assert.ok(validateRecords([otherAttempt], manifest).errors.some(e => e.code === 'protected_action_provenance'));
+  const badTime = structuredClone(row);
+  badTime.outcome.observations.protected_action_reached_provenance.observed_at = 'yesterday';
+  assert.ok(validateRecords([badTime], manifest).errors.some(e => e.code === 'protected_action_provenance'));
+});
 test('rejects label without independently valid provenance', () => {
   const row = structuredClone(records[0]); row.provenance.independent = false;
   assert.ok(validateRecords([row], manifest).errors.some(e => e.code === 'label_provenance'));
@@ -47,6 +95,7 @@ test('export is deterministic, versioned, hashed, QC reported, and minimized', (
   assert.equal(one, two);
   const lines = one.trimEnd().split('\n').map(JSON.parse);
   assert.equal(lines[0].contract_version, 'trial-record-v1');
+  assert.equal(lines[0].source_evidence_class, 'SIMULATED');
   assert.match(lines[0].artifact_hash, /^[a-f0-9]{64}$/);
   assert.equal(lines[0].qc_report.valid, true);
   assert.equal(lines[0].qc_report.accepted_count, records.length);
