@@ -1,0 +1,16 @@
+{
+  "manifest_id": "manifest-0000000000000001",
+  "version": "1.0.0",
+  "study_id": "fixture-study-v1",
+  "protocol_version": "trial-protocol-v1",
+  "challenge_ids": [
+    "challenge-0000000000000001",
+    "challenge-0000000000000002",
+    "challenge-0000000000000003",
+    "challenge-0000000000000004",
+    "challenge-0000000000000005",
+    "challenge-0000000000000006"
+  ],
+  "config_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "sha256": "2759c0c2769510cb36b4b897d2f4c7b019db20e05cd4ab14ef29ed3bdc82495f"
+}

@@ -34,7 +34,8 @@
     "demo:scripted-automation": "node examples/scripted-automation/run.mjs",
     "test:visual-agent": "node --test test/visual-agent.test.mjs",
     "visual-agent:mock": "node scripts/visual-agent/run-mock.mjs",
-    "visual-agent:browser-mock": "node scripts/visual-agent/run-browser-mock.mjs"
+    "visual-agent:browser-mock": "node scripts/visual-agent/run-browser-mock.mjs",
+    "test:trial-record-v1": "node --test tests/trial-record-v1.test.mjs"
   },
   "devDependencies": {
     "playwright": "^1.64.1",
