@@ -22,6 +22,7 @@
     "build:sdk": "tsc -p tsconfig.sdk.json",
     "test:sdk": "npm run build:sdk && node --test test/sdk/client-sdk.test.js",
     "test:trial-manifest": "node --test test/trial-manifest.test.js",
+    "test:human-confirmation": "node --test test/human-confirmation.test.js",
     "check:production-boundary": "npm run build:sdk && node scripts/check-production-boundary.mjs",
     "report:session-signatures": "node scripts/report-session-signatures.mjs",
     "run:playwright": "node scripts/run-playwright.mjs",

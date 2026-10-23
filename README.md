@@ -50,3 +50,4 @@ Install this branch's development dependencies with `npm install`. Run the suite
 - Browser SDK: `npm run test:sdk`
 - Experimental Python: `npm run test:python`
 - Trial Manifest v1 fixtures and validator: `node scripts/trial-manifest.mjs` and `npm run test:trial-manifest` (see [the contract](docs/trial-manifest-v1.md))
+- Human confirmation pilot: `npm run test:human-confirmation` and `node examples/human-confirmation/main.js`

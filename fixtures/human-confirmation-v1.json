@@ -1,0 +1,39 @@
+{
+  "schema_version": "human-confirmation-v1",
+  "evidence": "SIMULATED",
+  "description": "Synthetic examples only. These fixtures do not represent observed participants or MEASURED_LAB evidence.",
+  "cases": [
+    {
+      "case_id": "complete-independent-observation",
+      "expected_label": "HUMAN_CONFIRMED",
+      "confirmation": {
+        "method": "direct-researcher-observation",
+        "origin": "researcher-facilitated-controlled-session",
+        "procedure": "human-control-observation-v1",
+        "protocol_version": "human-observation-v1",
+        "scope": { "session_id": "session-sim-01", "attempt_id": "attempt-sim-01", "observed_from": "2027-01-15T12:00:00.000Z", "observed_to": "2027-01-15T12:00:10.000Z", "complete": true },
+        "observer_id": "observer-random-sim-01",
+        "confirmed_at": "2027-01-15T12:00:11.000Z"
+      }
+    },
+    {
+      "case_id": "consent-and-correct-answer-only",
+      "expected_label": "UNKNOWN",
+      "confirmation": null,
+      "reason": "no_independent_confirmation"
+    },
+    {
+      "case_id": "observer-cannot-confirm-human-control",
+      "expected_label": "UNKNOWN",
+      "procedure_outcome": "unconfirmed",
+      "confirmation": null,
+      "reason": "unconfirmed_observation"
+    },
+    {
+      "case_id": "partial-observation",
+      "expected_label": "UNKNOWN",
+      "confirmation": null,
+      "reason": "observation_incomplete"
+    }
+  ]
+}
