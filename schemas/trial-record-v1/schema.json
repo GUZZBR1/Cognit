@@ -48,7 +48,19 @@
           "properties": {
             "risk_score": { "type": "number", "minimum": 0, "maximum": 1 },
             "prediction": { "enum": ["human", "automation", "ai_agent", "unknown"] },
-            "policy": { "enum": ["allow", "block", "challenge", "unknown"] }
+            "policy": { "enum": ["allow", "block", "challenge", "unknown"] },
+            "protected_action_reached": { "type": ["boolean", "null"], "description": "Whether the protected action was observed in this attempt; absent or null means UNKNOWN and must never be inferred as false." },
+            "protected_action_reached_provenance": {
+              "type": "object", "additionalProperties": false,
+              "required": ["trial_id", "source", "method", "origin", "observed_at"],
+              "properties": {
+                "trial_id": { "type": "string", "pattern": "^trial-[a-f0-9]{16,64}$", "description": "Must equal the enclosing TrialRecord trial_id." },
+                "source": { "type": "string", "minLength": 1 },
+                "method": { "type": "string", "minLength": 1 },
+                "origin": { "type": "string", "minLength": 1 },
+                "observed_at": { "type": "string", "format": "date-time" }
+              }
+            }
           }
         }
       }
@@ -59,6 +71,30 @@
     "oracle_access": { "type": "boolean" }
   },
   "allOf": [
+    {
+      "if": {
+        "properties": {
+          "outcome": {
+            "properties": {
+              "observations": {
+                "properties": { "protected_action_reached": { "type": "boolean" } },
+                "required": ["protected_action_reached"]
+              }
+            }
+          }
+        },
+        "required": ["outcome"]
+      },
+      "then": {
+        "properties": {
+          "outcome": {
+            "properties": {
+              "observations": { "required": ["protected_action_reached_provenance"] }
+            }
+          }
+        }
+      }
+    },
     {
       "if": { "properties": { "actor": { "const": "UNKNOWN" } }, "required": ["actor"] },
       "then": { "properties": { "label": { "type": "null" }, "evidence_class": { "const": "unknown" } } }
