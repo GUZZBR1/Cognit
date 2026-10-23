@@ -55,6 +55,21 @@ node examples/browser/mock-server.mjs
 
 Open `http://127.0.0.1:4173` and choose **Run mock flow**. The mock does not contact a real verification server.
 
+## Experimental browser baseline exports
+
+The existing Playwright, Selenium, and Puppeteer runners execute only the local `cognit-fixed-demo`. Normalize one of their JSON exports without launching a browser:
+
+```sh
+npm run export:browser-baseline -- --framework playwright \
+  --input /path/to/playwright-results.json \
+  --context /path/to/trial-record-v1.json \
+  --output browser-baseline-results.json
+```
+
+Use `--framework selenium` or `--framework puppeteer` for those runner outputs. The context must identify TrialRecord version `1.0.0`, framework, manifest ID, Cognit commit, protocol version, canonical config and its SHA-256, seed, tool version, browser, browser version, and the controlled demo's HTTP loopback origin. The adapter requires the runner document's `source` to equal `cognit-fixed-demo`, rejects non-loopback origins, and requires its authored expected answer to disclose oracle use. When output contains target or tool/browser metadata, it must match the context. The legacy JSON does not include the browser's observed URL, so `target_origin` is declared run context, not an execution attestation; use outputs from a trusted local runner invocation. This adapter does not launch or verify the runner. It exports one `SIMULATED`/`AUTOMATION_CONTROLLED` record per attempt with `oracle_access: true`; `perception_metric_eligible` is always false. These records must not be treated as human ground truth or evidence of human perception.
+
+The local mapping fixture is `fixtures/browser-baseline/trial-record-v1.json`. Run its adapter checks with `npm run test:browser-baseline`. The versioned schema is a local snapshot for this adapter and does not define the canonical row-level contract.
+
 ## Validation
 
 - Root Go packages: `go test ./...`
