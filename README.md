@@ -70,7 +70,7 @@ Run the deterministic fixture policy and tests with `npm run visual-agent:mock`,
 
 ## TrialRecord v1
 
-Validate and export per-attempt experimental records with `npm run test:trial-record-v1` and `node scripts/trial-record.mjs --input fixtures/trial-record-v1/records.json --manifest fixtures/trial-record-v1/manifest.json --output /tmp/cognit-trial-record-v1.jsonl`. The JSONL output is deterministic and hashed; provenance and UNKNOWN labels are preserved, and invalid/oracle records are reported rather than treated as human ground truth. See [the TrialRecord contract](docs/trial-record-v1.md).
+Validate and export per-attempt experimental records with `npm run test:trial-record-v1` and `TRIAL_RECORD_PSEUDONYM_KEY='replace-with-a-secret-of-at-least-32-characters' node scripts/trial-record.mjs --input fixtures/trial-record-v1/records.json --manifest fixtures/trial-record-v1/manifest.json --output /tmp/cognit-trial-record-v1.jsonl`. The JSONL output is deterministic and hashed; provenance and UNKNOWN labels are preserved, and invalid/oracle records are reported rather than treated as human ground truth. See [the TrialRecord contract](docs/trial-record-v1.md).
 
 ## Validation
 
