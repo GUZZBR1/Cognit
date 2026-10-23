@@ -29,13 +29,196 @@ CHALLENGE_SET_SHA256 = "bb4ca50830eed3ece2684eed4393d5b48c569106b017f056260ae862
 
 def _read_dataset(path: Path) -> tuple[dict[str, Any], str]:
     raw = path.read_bytes()
+    if path.suffix == ".jsonl":
+        return _read_trial_record_export(path, raw)
     try:
         document = json.loads(raw)
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise ValueError(f"{path}: invalid JSON: {error}") from error
     if not isinstance(document, dict) or document.get("schema_version") != 1:
         raise ValueError(f"{path}: expected an object with schema_version 1")
+    if "evidence_class" not in document and {"fixture", "fixtures"}.intersection(path.parts):
+        document = {**document, "evidence_class": "SIMULATED"}
     return document, hashlib.sha256(raw).hexdigest()
+
+
+def _read_trial_record_export(path: Path, raw: bytes) -> tuple[dict[str, Any], str]:
+    """Read the validated TrialRecord v1 JSONL export without filling gaps."""
+    try:
+        lines = raw.decode("utf-8").splitlines()
+        header, *encoded_rows = lines
+        export = json.loads(header)
+        rows = [json.loads(line) for line in encoded_rows]
+    except (UnicodeDecodeError, ValueError, json.JSONDecodeError) as error:
+        raise ValueError(f"{path}: invalid TrialRecord v1 JSONL export: {error}") from error
+    if (not isinstance(export, dict) or export.get("type") != "trial-record-export"
+            or export.get("contract_version") != "trial-record-v1"):
+        raise ValueError(f"{path}: expected a TrialRecord v1 export header")
+    source_evidence = export.get("source_evidence_class")
+    if source_evidence is not None and not (isinstance(source_evidence, str) and source_evidence in {"SIMULATED", "OBSERVED", "REPLAYED"}):
+        raise ValueError(f"{path}: invalid source_evidence_class")
+    qc = export.get("qc_report")
+    if (not isinstance(qc, dict) or qc.get("valid") is not True
+            or qc.get("rejected_count") != 0
+            or qc.get("accepted_count") != len(rows)
+            or qc.get("total_count") != len(rows)
+            or qc.get("rejected_records") != []):
+        raise ValueError(f"{path}: TrialRecord export must have a complete, valid QC report")
+    canonical_rows = "\n".join(json.dumps(row, sort_keys=True, separators=(",", ":"), ensure_ascii=False) for row in rows)
+    if hashlib.sha256(canonical_rows.encode("utf-8")).hexdigest() != export.get("artifact_hash"):
+        raise ValueError(f"{path}: TrialRecord export artifact_hash mismatch")
+
+    attempts = []
+    trial_ids = set()
+    for index, row in enumerate(rows):
+        _validate_exported_trial_record(path, index, row)
+        if row["trial_id"] in trial_ids:
+            raise ValueError(f"{path}: TrialRecord row {index} duplicates trial_id")
+        trial_ids.add(row["trial_id"])
+        outcome = row.get("outcome")
+        observations = outcome.get("observations") if isinstance(outcome, dict) else None
+        observations = observations if isinstance(observations, dict) else {}
+        policy = observations.get("policy")
+        if "policy" in observations and not (isinstance(policy, str) and policy in {"allow", "block", "challenge", "unknown"}):
+            raise ValueError(f"{path}: TrialRecord row {index} has an invalid policy observation")
+        policy_outcome = policy.upper() if isinstance(policy, str) else "UNKNOWN"
+        actor = row.get("actor")
+        actor_class = {
+            "AUTOMATION_CONTROL": "AUTOMATION_CONTROLLED",
+            "AI_AGENT": "AI_AGENT",
+        }.get(actor, actor)
+        attempt = {
+            "session_id": row.get("session_id"),
+            "attempt_id": row.get("trial_id"),
+            "actor_class": actor_class,
+            "oracle_access": row.get("oracle_access"),
+            "evidence_class": row.get("evidence_class"),
+            "observed_result": {"policy_outcome": policy_outcome},
+        }
+        if "protected_action_reached" in observations:
+            reached = observations["protected_action_reached"]
+            if reached is not None and not isinstance(reached, bool):
+                raise ValueError(f"{path}: TrialRecord row {index} has invalid protected_action_reached")
+            if isinstance(reached, bool):
+                provenance = observations.get("protected_action_reached_provenance")
+                if (not isinstance(provenance, dict) or provenance.get("trial_id") != row.get("trial_id")
+                        or any(not isinstance(provenance.get(key), str) or not provenance[key].strip() for key in ("source", "method", "origin", "observed_at"))):
+                    raise ValueError(f"{path}: TrialRecord row {index} has invalid protected-action provenance")
+            attempt["protected_action_reached"] = reached
+        if "protected_action_reached_provenance" in observations:
+            attempt["protected_action_reached_provenance"] = observations["protected_action_reached_provenance"]
+        attempts.append(attempt)
+    document = {
+        "schema_version": 1,
+        "evidence_class": "SIMULATED" if source_evidence == "SIMULATED" or {"fixture", "fixtures"}.intersection(path.parts) else "UNVERIFIED_INPUTS",
+        "trial_record_export": {
+            "contract_version": export["contract_version"],
+            "artifact_hash": export["artifact_hash"],
+            "qc_report": qc,
+        },
+        "attempts": attempts,
+    }
+    return document, hashlib.sha256(raw).hexdigest()
+
+
+def _validate_exported_trial_record(path: Path, index: int, row: Any) -> None:
+    prefix = f"{path}: TrialRecord row {index}"
+    required = {"contract_version", "trial_id", "session_id", "actor", "label", "provenance", "manifest_ref", "challenge_ref", "outcome", "started_at", "ended_at", "evidence_class", "oracle_access"}
+    allowed = required | {"participant_id"}
+    if not isinstance(row, dict) or not required.issubset(row) or set(row) - allowed or row.get("contract_version") != "trial-record-v1":
+        raise ValueError(f"{prefix} is incomplete or has an unsupported contract/field")
+    opaque = re.compile(r"^(trial|session|participant|manifest|challenge|seed)-[a-f0-9]{16,64}$")
+    for key, kind in (("trial_id", "trial"), ("session_id", "session")):
+        if not isinstance(row.get(key), str) or not opaque.fullmatch(row[key]) or not row[key].startswith(f"{kind}-"):
+            raise ValueError(f"{prefix} has an invalid {key}")
+    if "participant_id" in row and (not isinstance(row["participant_id"], str) or not opaque.fullmatch(row["participant_id"]) or not row["participant_id"].startswith("participant-")):
+        raise ValueError(f"{prefix} has an invalid participant_id")
+    actor = row.get("actor")
+    if not isinstance(actor, str) or actor not in {"HUMAN_CONFIRMED", "AUTOMATION_CONTROL", "AI_AGENT", "UNKNOWN"}:
+        raise ValueError(f"{prefix} has an invalid actor")
+    label = row.get("label")
+    if label is not None and (not isinstance(label, str) or label not in {"human", "automation", "ai_agent"}):
+        raise ValueError(f"{prefix} has an invalid label")
+    provenance = row.get("provenance")
+    provenance_sources = {"independent-human-review", "independent-agent-review", "controlled-automation", "accessibility-review", "oracle-control", "unknown"}
+    if (not isinstance(provenance, dict) or set(provenance) != {"source", "independent", "valid"}
+            or not isinstance(provenance.get("source"), str) or provenance.get("source") not in provenance_sources
+            or not isinstance(provenance.get("independent"), bool)
+            or not isinstance(provenance.get("valid"), bool)):
+        raise ValueError(f"{prefix} has invalid actor provenance")
+    expected_label = {"HUMAN_CONFIRMED": "human", "AUTOMATION_CONTROL": "automation", "AI_AGENT": "ai_agent"}.get(actor)
+    if actor == "UNKNOWN" and label is not None or expected_label and label not in {None, expected_label}:
+        raise ValueError(f"{prefix} has an actor/label mismatch")
+    if label is not None and (not provenance["independent"] or not provenance["valid"] or provenance["source"] in {"unknown", "oracle-control"}):
+        raise ValueError(f"{prefix} has a label without independent valid provenance")
+    if label is not None and provenance["source"] != {"human": "independent-human-review", "automation": "controlled-automation", "ai_agent": "independent-agent-review"}.get(label) and not (label == "human" and provenance["source"] == "accessibility-review"):
+        raise ValueError(f"{prefix} has actor-incompatible label provenance")
+    evidence = row.get("evidence_class")
+    valid_evidence = {"human_report", "automation", "agent", "unknown", "accessible", "oracle_assisted"}
+    evidence_by_actor = {"HUMAN_CONFIRMED": {"human_report", "accessible"}, "AUTOMATION_CONTROL": {"automation", "oracle_assisted"}, "AI_AGENT": {"agent", "oracle_assisted"}, "UNKNOWN": {"unknown"}}
+    oracle = row.get("oracle_access")
+    if (not isinstance(evidence, str) or evidence not in valid_evidence or not isinstance(oracle, bool)
+            or (evidence == "oracle_assisted") != oracle
+            or evidence not in evidence_by_actor[actor]
+            or oracle and (actor not in {"AUTOMATION_CONTROL", "AI_AGENT"} or label is not None)):
+        raise ValueError(f"{prefix} has invalid actor/evidence/oracle metadata")
+    manifest_ref = row.get("manifest_ref")
+    challenge_ref = row.get("challenge_ref")
+    if (not isinstance(manifest_ref, dict) or set(manifest_ref) != {"manifest_id", "sha256", "version"}
+            or not isinstance(manifest_ref.get("manifest_id"), str) or not opaque.fullmatch(manifest_ref["manifest_id"])
+            or not isinstance(manifest_ref.get("sha256"), str) or not re.fullmatch(r"[a-f0-9]{64}", manifest_ref["sha256"])
+            or not isinstance(manifest_ref.get("version"), str) or not re.fullmatch(r"\d+\.\d+\.\d+", manifest_ref["version"])):
+        raise ValueError(f"{prefix} has invalid manifest_ref")
+    if (not isinstance(challenge_ref, dict) or set(challenge_ref) != {"challenge_id", "seed_ref", "config_hash"}
+            or not isinstance(challenge_ref.get("challenge_id"), str) or not opaque.fullmatch(challenge_ref["challenge_id"])
+            or not isinstance(challenge_ref.get("seed_ref"), str) or not opaque.fullmatch(challenge_ref["seed_ref"])
+            or not isinstance(challenge_ref.get("config_hash"), str) or not re.fullmatch(r"[a-f0-9]{64}", challenge_ref["config_hash"])):
+        raise ValueError(f"{prefix} has invalid challenge_ref")
+    start, end = _valid_timestamp(row.get("started_at")), _valid_timestamp(row.get("ended_at"))
+    if start is None or end is None or end < start:
+        raise ValueError(f"{prefix} has invalid timestamps")
+    outcome = row.get("outcome")
+    if (not isinstance(outcome, dict) or not {"status", "duration_ms"}.issubset(outcome)
+            or set(outcome) - {"status", "duration_ms", "observations"}
+            or not isinstance(outcome.get("status"), str) or outcome.get("status") not in {"completed", "failed", "abandoned", "unknown"}):
+        raise ValueError(f"{prefix} has invalid outcome")
+    duration = outcome.get("duration_ms")
+    if duration is not None and (isinstance(duration, bool) or not isinstance(duration, (int, float)) or not math.isfinite(duration) or duration < 0):
+        raise ValueError(f"{prefix} has invalid duration_ms")
+    if duration is not None and abs(duration - (end - start).total_seconds() * 1000) > 1:
+        raise ValueError(f"{prefix} has inconsistent duration_ms")
+    observations = outcome.get("observations")
+    if "observations" in outcome and not isinstance(observations, dict):
+        raise ValueError(f"{prefix} observations must be an object")
+    observations = observations or {}
+    if set(observations) - {"risk_score", "prediction", "policy", "protected_action_reached", "protected_action_reached_provenance"}:
+        raise ValueError(f"{prefix} has an unknown observation")
+    risk = observations.get("risk_score")
+    if "risk_score" in observations and (isinstance(risk, bool) or not isinstance(risk, (int, float)) or not math.isfinite(risk) or not 0 <= risk <= 1):
+        raise ValueError(f"{prefix} has an invalid risk_score")
+    if "prediction" in observations and (not isinstance(observations["prediction"], str) or observations["prediction"] not in {"human", "automation", "ai_agent", "unknown"}):
+        raise ValueError(f"{prefix} has an invalid prediction")
+    if "policy" in observations and (not isinstance(observations["policy"], str) or observations["policy"] not in {"allow", "block", "challenge", "unknown"}):
+        raise ValueError(f"{prefix} has an invalid policy")
+    if "protected_action_reached" in observations:
+        reached = observations["protected_action_reached"]
+        if reached is not None and not isinstance(reached, bool):
+            raise ValueError(f"{prefix} has invalid protected_action_reached")
+        action_provenance = observations.get("protected_action_reached_provenance")
+        if isinstance(reached, bool) and (not isinstance(action_provenance, dict)
+                or set(action_provenance) != {"trial_id", "source", "method", "origin", "observed_at"}
+                or action_provenance.get("trial_id") != row["trial_id"]
+                or any(not isinstance(action_provenance.get(key), str) or not action_provenance[key].strip() for key in ("source", "method", "origin"))
+                or _valid_timestamp(action_provenance.get("observed_at")) is None):
+            raise ValueError(f"{prefix} has invalid protected-action provenance")
+    elif "protected_action_reached_provenance" in observations:
+        action_provenance = observations["protected_action_reached_provenance"]
+        if (not isinstance(action_provenance, dict)
+                or set(action_provenance) != {"trial_id", "source", "method", "origin", "observed_at"}
+                or action_provenance.get("trial_id") != row["trial_id"]
+                or any(not isinstance(action_provenance.get(key), str) or not action_provenance[key].strip() for key in ("source", "method", "origin"))
+                or _valid_timestamp(action_provenance.get("observed_at")) is None):
+            raise ValueError(f"{prefix} has invalid protected-action provenance")
 
 
 def _confirmed_human(record: Any) -> bool:
@@ -108,6 +291,8 @@ def _records(group: str, document: dict[str, Any]) -> list[dict[str, Any]]:
     if not isinstance(attempts, list):
         raise ValueError(f"{group} run must contain an attempts array")
     session_id = document.get("session_id")
+    if isinstance(document.get("trial_record_export"), dict):
+        return [record for record in attempts if isinstance(record, dict)]
     if not isinstance(session_id, str) or not session_id.strip():
         raise ValueError(f"{group} run must identify its session_id")
     return [record for record in attempts if isinstance(record, dict)]
@@ -131,6 +316,20 @@ def _outcome(record: dict[str, Any]) -> str:
     raw = raw or record.get("policy_outcome")
     value = raw if isinstance(raw, str) else "UNKNOWN"
     return value.upper() if value.upper() in {"ALLOW", "PASS", "CHALLENGE", "RESTRICT", "BLOCK", "UNKNOWN"} else "UNKNOWN"
+
+
+def _protected_action_observation(record: dict[str, Any]) -> bool | None:
+    result = record.get("observed_result")
+    result = result if isinstance(result, dict) else {}
+    if "protected_action_reached" in record:
+        value = record["protected_action_reached"]
+    elif "protected_action_reached" in result:
+        value = result["protected_action_reached"]
+    else:
+        return None
+    if value is not None and not isinstance(value, bool):
+        raise ValueError("protected_action_reached must be true, false, null, or absent")
+    return value
 
 
 def _valid_timestamp(value: Any) -> datetime | None:
@@ -205,11 +404,18 @@ def _primary_endpoints(datasets: dict[str, Path | None]) -> dict[str, Any]:
     automated_rows: list[dict[str, Any]] = []
     challenge_rows: list[dict[str, Any]] = []
     outcomes: list[str] = []
+    oracle_automation_sessions: set[tuple[str, str]] = set()
     for group, path in datasets.items():
         if path is None:
             continue
         document, _ = _read_dataset(path)
         for row in _records(group, document):
+            actor = row.get("actor_class", row.get("actor", {}).get("type") if isinstance(row.get("actor"), dict) else None)
+            session_id = row.get("session_id", document.get("session_id"))
+            known_automation_actor = actor in {"AUTOMATION_CONTROL", "AUTOMATION_CONTROLLED", "SCRIPTED_AUTOMATION", "AI_AGENT"}
+            is_automation = known_automation_actor if isinstance(document.get("trial_record_export"), dict) else known_automation_actor or group != "human"
+            if is_automation and isinstance(session_id, str) and session_id and _oracle_assisted(row):
+                oracle_automation_sessions.add((group, session_id))
             if _oracle_assisted(row):
                 continue
             result = row.get("observed_result") if isinstance(row.get("observed_result"), dict) else {}
@@ -219,7 +425,6 @@ def _primary_endpoints(datasets: dict[str, Path | None]) -> dict[str, Any]:
             outcomes.append(outcome)
             if applied:
                 challenge_rows.append({"outcome": outcome, "correct": result.get("correct", row.get("correct")), "completed": result.get("completed", row.get("challenge_completed"))})
-            actor = row.get("actor_class", row.get("actor", {}).get("type") if isinstance(row.get("actor"), dict) else None)
             if group == "human":
                 confirmed = _confirmed_human(row) or (
                     isinstance(row.get("ground_truth"), dict)
@@ -231,10 +436,9 @@ def _primary_endpoints(datasets: dict[str, Path | None]) -> dict[str, Any]:
                 session = row.get("session_id")
                 if confirmed and timestamp and isinstance(participant, str) and participant and isinstance(session, str) and session:
                     human_rows.append({"participant_id": participant, "session_id": session, "started": timestamp, "outcome": outcome, "restricted": outcome in {"RESTRICT", "BLOCK"}})
-            elif actor in {"AUTOMATION_CONTROLLED", "SCRIPTED_AUTOMATION", "AI_AGENT"} or group != "human":
-                session_id = row.get("session_id", document.get("session_id"))
+            elif known_automation_actor or (group != "human" and not isinstance(document.get("trial_record_export"), dict)):
                 if isinstance(session_id, str) and session_id:
-                    automated_rows.append({"group": group, "session_id": session_id, "outcome": outcome, "reached": row.get("protected_action_reached") is True or result.get("protected_action_reached") is True})
+                    automated_rows.append({"group": group, "session_id": session_id, "outcome": outcome, "reached": _protected_action_observation(row)})
 
     primary: dict[str, dict[str, Any]] = {}
     sessions: dict[tuple[str, str], dict[str, Any]] = {}
@@ -253,11 +457,34 @@ def _primary_endpoints(datasets: dict[str, Path | None]) -> dict[str, Any]:
     automation_sessions: dict[tuple[str, str], dict[str, Any]] = {}
     for row in automated_rows:
         key = (row["group"], row["session_id"])
-        session = automation_sessions.setdefault(key, {"outcomes": [], "reached": False})
+        session = automation_sessions.setdefault(key, {"outcomes": [], "reach_observations": []})
         session["outcomes"].append(row["outcome"])
-        session["reached"] = session["reached"] or row["reached"]
-    escape_eligible = [session for session in automation_sessions.values() if any(outcome != "UNKNOWN" for outcome in session["outcomes"])]
-    escaped = sum(session["reached"] for session in escape_eligible)
+        session["reach_observations"].append(row["reached"])
+    automation_sessions = {
+        key: session for key, session in automation_sessions.items()
+        if key not in oracle_automation_sessions
+    }
+    for session in automation_sessions.values():
+        observations = session["reach_observations"]
+        session["reached"] = True if any(value is True for value in observations) else False if observations and all(value is False for value in observations) else None
+        session["policy_known"] = any(outcome != "UNKNOWN" for outcome in session["outcomes"])
+    escape_eligible = [session for session in automation_sessions.values() if session["policy_known"] and session["reached"] is not None]
+    escaped = sum(session["reached"] is True for session in escape_eligible)
+    unknown_policy_sessions = [session for session in automation_sessions.values() if not session["policy_known"]]
+    unknown_reach_sessions = [session for session in automation_sessions.values() if session["reached"] is None]
+    policy_only_exclusions = sum(not session["policy_known"] and session["reached"] is not None for session in automation_sessions.values())
+    reach_only_exclusions = sum(session["policy_known"] and session["reached"] is None for session in automation_sessions.values())
+    both_unknown_exclusions = sum(not session["policy_known"] and session["reached"] is None for session in automation_sessions.values())
+    attempt_reach_counts = {
+        "true": sum(row["reached"] is True for row in automated_rows),
+        "false": sum(row["reached"] is False for row in automated_rows),
+        "unknown": sum(row["reached"] is None for row in automated_rows),
+    }
+    session_reach_counts = {
+        "true": sum(session["reached"] is True for session in automation_sessions.values()),
+        "false": sum(session["reached"] is False for session in automation_sessions.values()),
+        "unknown": len(unknown_reach_sessions),
+    }
     completed_challenges = [row for row in challenge_rows if row["completed"] is True]
     known_challenges = [row for row in completed_challenges if isinstance(row["correct"], bool)]
 
@@ -269,7 +496,21 @@ def _primary_endpoints(datasets: dict[str, Path | None]) -> dict[str, Any]:
     outcome_counts = {name: sum(outcome == name for outcome in outcomes) for name in ("CHALLENGE", "RESTRICT", "BLOCK", "UNKNOWN")}
     return {
         "human_false_positive_rate": {**rate(false_positives, len(eligible_human)), "unit": "independent_participant", "participants": len(primary), "sessions_considered": len(sessions), "numerator_definition": "primary session received RESTRICT or BLOCK on any nested attempt", "denominator_definition": "participants with independently confirmed primary session and at least one known outcome"},
-        "automation_escape_to_protected_action": {**rate(escaped, len(escape_eligible)), "unit": "session", "numerator_definition": "protected action reached", "denominator_definition": "non-oracle automation sessions with known policy outcome"},
+        "automation_escape_to_protected_action": {
+            **rate(escaped, len(escape_eligible)),
+            "unit": "session",
+            "numerator_definition": "sessions with at least one explicitly observed protected action reached",
+            "denominator_definition": "non-oracle automation sessions with a known policy outcome and a known tri-state session reach observation",
+            "reach_observations_by_attempt": attempt_reach_counts,
+            "reach_states_by_session": session_reach_counts,
+            "unknown_policy_sessions": len(unknown_policy_sessions),
+            "excluded_sessions": {
+                "oracle": len(oracle_automation_sessions),
+                "unknown_policy_only": policy_only_exclusions,
+                "unknown_reach_only": reach_only_exclusions,
+                "unknown_policy_and_reach": both_unknown_exclusions,
+            },
+        },
         "challenge_completed": {**rate(len(completed_challenges), len(challenge_rows)), "unit": "challenge attempt", "numerator_definition": "completed is explicitly true", "denominator_definition": "records with an explicitly applied challenge"},
         "challenge_completed_correctly": {**rate(sum(row["correct"] is True for row in known_challenges), len(known_challenges)), "unit": "challenge attempt", "numerator_definition": "completed challenge with correct result", "denominator_definition": "completed challenges with explicit correctness boolean"},
         "challenge_applied": {"status": "AVAILABLE" if outcomes else "UNAVAILABLE", "numerator": len(challenge_rows) if outcomes else None, "denominator": len(outcomes) if outcomes else None, "unit": "session/attempt", "outcomes": outcome_counts, **({} if outcomes else {"reason": "no_eligible_observations"})},
@@ -382,8 +623,9 @@ def _group_report(group: str, source: Path | None) -> dict[str, Any]:
         reason = "no_non_oracle_eligible_records" if input_record_count else ("no_independently_confirmed_human_records" if group == "human" else "no_attempt_records")
         return {
             "status": "UNAVAILABLE", "reason": reason, "runner": RUNNERS[group],
-            "dataset": str(source), "sha256": digest,
+            "dataset": source.name, "sha256": digest,
             "input_record_count": input_record_count,
+            **({"trial_record_export": document["trial_record_export"]} if isinstance(document.get("trial_record_export"), dict) else {}),
         }
 
     ids = [_cluster_id(group, document, row) for row in records]
@@ -458,8 +700,9 @@ def _group_report(group: str, source: Path | None) -> dict[str, Any]:
     return {
         "status": "AVAILABLE",
         "runner": RUNNERS[group],
-        "dataset": str(source),
+        "dataset": source.name,
         "sha256": digest,
+        **({"trial_record_export": document["trial_record_export"]} if isinstance(document.get("trial_record_export"), dict) else {}),
         "versions": versions,
         "sample": {
             "clusters": cluster_count,
@@ -477,6 +720,17 @@ def _group_report(group: str, source: Path | None) -> dict[str, Any]:
         "challenge_performance": challenge_report or {"status": "UNAVAILABLE", "reason": "no_challenge_labels"},
         "browser_signals": signal_report or {"status": "UNAVAILABLE", "reason": "no_browser_signal_observations"},
     }
+
+
+def _report_evidence_class(datasets: dict[str, Path | None]) -> str:
+    supplied = [path for path in datasets.values() if path is not None]
+    if not supplied:
+        return "UNAVAILABLE"
+    evidence_classes = []
+    for path in supplied:
+        document, _ = _read_dataset(path)
+        evidence_classes.append(document.get("evidence_class"))
+    return "SIMULATED" if all(value == "SIMULATED" for value in evidence_classes) else "UNVERIFIED_INPUTS"
 
 
 def build_report(datasets: dict[str, Path | None]) -> dict[str, Any]:
@@ -498,11 +752,7 @@ def build_report(datasets: dict[str, Path | None]) -> dict[str, Any]:
         },
         "groups": {group: _group_report(group, datasets.get(group)) for group in GROUPS},
         "endpoints": _primary_endpoints(datasets),
-        "evidence_class": (
-            "UNAVAILABLE" if not any(datasets.values())
-            else "SIMULATED" if all(path is None or {"fixture", "fixtures"}.intersection(path.parts) for path in datasets.values())
-            else "UNVERIFIED_INPUTS"
-        ),
+        "evidence_class": _report_evidence_class(datasets),
         "limitations": [
             "No group result implies universal separation of humans and automation.",
             "Browser indicators are experimental signals; missing indicators do not establish human operation.",

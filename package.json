@@ -35,7 +35,8 @@
     "test:visual-agent": "node --test test/visual-agent.test.mjs",
     "visual-agent:mock": "node scripts/visual-agent/run-mock.mjs",
     "visual-agent:browser-mock": "node scripts/visual-agent/run-browser-mock.mjs",
-    "test:trial-record-v1": "node --test tests/trial-record-v1.test.mjs"
+    "test:trial-record-v1": "node --test tests/trial-record-v1.test.mjs",
+    "test:trial-record-benchmark": "python3 -m unittest test_benchmark_report"
   },
   "devDependencies": {
     "playwright": "^1.64.1",
