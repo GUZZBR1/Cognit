@@ -18,9 +18,13 @@
   "scripts": {
     "build:sdk": "tsc -p tsconfig.sdk.json",
     "test:sdk": "npm run build:sdk && node --test test/sdk/client-sdk.test.js",
-    "check:production-boundary": "npm run build:sdk && node scripts/check-production-boundary.mjs"
+    "check:production-boundary": "npm run build:sdk && node scripts/check-production-boundary.mjs",
+    "test:visual-agent": "node --test test/visual-agent.test.mjs",
+    "visual-agent:mock": "node scripts/visual-agent/run-mock.mjs",
+    "visual-agent:browser-mock": "node scripts/visual-agent/run-browser-mock.mjs"
   },
   "devDependencies": {
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "playwright": "^1.64.1"
   }
 }

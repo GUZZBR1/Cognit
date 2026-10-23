@@ -1,0 +1,4 @@
+[
+  { "action": { "type": "click", "x": 100, "y": 136 }, "observation": "A visible continuation control is present." },
+  { "action": { "type": "stop" }, "observation": "The fixture ended; challenge outcome was not established." }
+]

@@ -60,3 +60,17 @@ Open `http://127.0.0.1:4173` and choose **Run mock flow**. The mock does not con
 - Root Go packages: `go test ./...`
 - Nested Go modules: run `go test ./...` inside `go/session` and `go/decisionpolicy`.
 - Browser SDK: `npm run test:sdk`
+
+## Visual agent adapter (experimental)
+
+The visual adapter is experimental and screenshot-only. It gives the agent screenshot bytes and viewport dimensions, then accepts bounded coordinate clicks. It does not provide DOM, selectors, network requests, navigation, challenge fixtures, or expected answers. The Playwright port pins the page to `http://127.0.0.1:4173/visual-agent-demo` and intercepts every request, allowing only the demo document and its local script. Other origins, API paths, and unexpected browser capabilities are blocked. The existing SDK mock API exposes challenge data, so it is not used as the agent's input surface.
+
+Run the deterministic fixture policy and its tests:
+
+```sh
+npm run visual-agent:mock
+npm run visual-agent:browser-mock
+npm run test:visual-agent
+```
+
+Each exported attempt is minimized: screenshots are not stored, actions contain coordinates only, sensitive configuration fields are redacted, provenance records provider/model/configuration/template/browser/Cognit commit, and the outcome remains `UNKNOWN` until an independent evaluator supplies evidence. Both mock commands are `SIMULATED`. Real model execution is not wired yet; any future measured run must provide complete provenance and use `MEASURED_LAB`, which describes execution provenance rather than general validity.
