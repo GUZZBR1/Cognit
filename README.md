@@ -4,7 +4,7 @@ Cognit is a human-presence verification product library. This repository contain
 
 ## Product components
 
-- `src/cognit/client-sdk.js` is the browser client for a host application's verification service.
+- `src/cognit/client-sdk.ts` is the typed browser client for a host application's verification service. `npm run build:sdk` emits browser JavaScript and declarations in `dist/`.
 - `src/fixed-challenges.js`, `src/seeded-generator.js`, `challenge_generator.py`, and `challenge_mutations.mjs` provide fixed and reproducible challenge generation.
 - `src/reaction-time-collector.mjs` and `src/mouse-telemetry.mjs` collect attempt timing and return derived mouse features without retaining raw trajectories.
 - `browser-automation-signals.js` reports heuristic browser signals. An individual signal is not proof of automation, and an empty result does not prove human presence.
@@ -16,3 +16,17 @@ Cognit is a human-presence verification product library. This repository contain
 Keep signing secrets and final policy decisions on the server. Supply token claims and expected bindings from trusted server-side context. Treat risk scores and browser signals as uncertain evidence; they do not establish identity or intent. Use `UNKNOWN` when evidence is missing or insufficient.
 
 This repository provides product components and an API contract; it does not include a hosted verification service. Applications must connect the SDK to their own authenticated server implementation.
+
+
+## Browser SDK mock example
+
+Build the SDK and start the local mock server:
+
+```sh
+npm install
+npm run build:sdk
+npm run test:sdk
+node examples/browser/mock-server.mjs
+```
+
+Open `http://127.0.0.1:4173` and choose **Run mock flow** to create a session, request a challenge, submit telemetry and a result, and check its verification state. The mock is local and does not contact a real verification server.
