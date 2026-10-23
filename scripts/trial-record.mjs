@@ -3,6 +3,7 @@ import { createHash, createHmac } from 'node:crypto';
 import { readFile, realpath, writeFile } from 'node:fs/promises';
 import { basename, dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { validateManifest as validateTrialManifest } from './trial-manifest.mjs';
 
 export const CONTRACT_VERSION = 'trial-record-v1';
 const required = ['contract_version', 'trial_id', 'session_id', 'actor', 'label', 'provenance', 'manifest_ref', 'challenge_ref', 'outcome', 'started_at', 'ended_at', 'evidence_class', 'oracle_access'];
@@ -101,7 +102,7 @@ function containsUnsafeJsonValue(value, seen = new Set()) {
   return false;
 }
 
-export function validateRecords(records, manifest, { pseudonymKey = process.env.TRIAL_RECORD_PSEUDONYM_KEY, requirePseudonymKey = false } = {}) {
+export function validateRecords(records, manifest, { pseudonymKey = process.env.TRIAL_RECORD_PSEUDONYM_KEY, requirePseudonymKey = false, trialManifest } = {}) {
   const errors = [];
   const error = (index, code, message) => errors.push({ index, code, message });
   if (!Array.isArray(records)) return { valid: false, errors: [{ index: null, code: 'records_type', message: 'Input must be an array' }], accepted_indices: [], accepted_count: 0, rejected_records: [] };
@@ -110,6 +111,7 @@ export function validateRecords(records, manifest, { pseudonymKey = process.env.
   const evidenceClassValid = manifest?.evidence_class === undefined || ['SIMULATED', 'OBSERVED', 'REPLAYED'].includes(manifest.evidence_class);
   const manifestValid = !!manifest && isOpaqueId(manifest.manifest_id) && typeof manifest.version === 'string' && /^\d+\.\d+\.\d+$/.test(manifest.version) && typeof manifest.study_id === 'string' && !!manifest.study_id && typeof manifest.protocol_version === 'string' && !!manifest.protocol_version && Array.isArray(manifest.challenge_ids) && manifest.challenge_ids.length > 0 && manifest.challenge_ids.every(isOpaqueId) && /^[a-f0-9]{64}$/.test(manifest.config_hash ?? '') && evidenceClassValid && manifest.sha256 === actualManifestHash;
   if (!manifestValid) error(null, 'manifest_hash', 'Manifest must have study, protocol, id, version, and a sha256 matching its canonical content');
+  if (trialManifest) for (const message of validateManifestBridge(manifest, trialManifest).errors) error(null, 'manifest_bridge', message);
   const idCounts = new Map();
   for (const record of records) if (record && typeof record.trial_id === 'string' && record.trial_id.trim()) idCounts.set(record.trial_id, (idCounts.get(record.trial_id) ?? 0) + 1);
 
@@ -178,12 +180,30 @@ export function validateRecords(records, manifest, { pseudonymKey = process.env.
   return { valid: errors.length === 0, errors, accepted_indices, accepted_count: accepted_indices.length, rejected_records };
 }
 
-export function exportJsonl(records, manifest, { pseudonymKey = process.env.TRIAL_RECORD_PSEUDONYM_KEY } = {}) {
-  const qc = validateRecords(records, manifest, { pseudonymKey, requirePseudonymKey: true });
+export function validateManifestBridge(recordManifest, trialManifest) {
+  const errors = [];
+  if (!trialManifest) return { valid: false, errors: ['Canonical Trial Manifest is required for the experimental pipeline'] };
+  const trialValidation = validateTrialManifest(trialManifest);
+  if (!trialValidation.valid) errors.push(...trialValidation.errors.map(error => `Trial Manifest: ${error}`));
+  const reference = recordManifest?.trial_manifest_ref;
+  if (!reference || reference.manifest_id !== trialManifest.manifest_id || reference.sha256 !== trialManifest.manifest_sha256 || reference.version !== trialManifest.manifest_version) errors.push('Record manifest must bind the exact canonical Trial Manifest id, hash, and version');
+  if (recordManifest?.study_id !== trialManifest.study_id) errors.push('Record manifest study_id does not match the canonical Trial Manifest');
+  if (recordManifest?.protocol_version !== trialManifest.protocol_version) errors.push('Record manifest protocol_version does not match the canonical Trial Manifest');
+  if (recordManifest?.config_hash !== trialManifest.config_sha256) errors.push('Record manifest config_hash does not match the canonical Trial Manifest');
+  if (recordManifest?.challenge_set?.id !== trialManifest.challenge_set?.id || recordManifest?.challenge_set?.version !== trialManifest.challenge_set?.version) errors.push('Record manifest challenge_set does not match the canonical Trial Manifest');
+  if (!Array.isArray(recordManifest?.challenge_ids) || !Array.isArray(trialManifest.challenge_set?.challenge_ids) || canonical([...recordManifest.challenge_ids].sort()) !== canonical([...trialManifest.challenge_set.challenge_ids].sort())) errors.push('Record manifest challenge_ids do not match the canonical Trial Manifest challenge membership');
+  if (recordManifest?.evidence_class !== trialManifest.evidence_class) errors.push('Record manifest evidence_class does not match the canonical Trial Manifest');
+  return { valid: errors.length === 0, errors };
+}
+
+export function exportJsonl(records, manifest, { pseudonymKey = process.env.TRIAL_RECORD_PSEUDONYM_KEY, trialManifest } = {}) {
+  const qc = validateRecords(records, manifest, { pseudonymKey, requirePseudonymKey: true, trialManifest });
+  const bridge = trialManifest ? validateManifestBridge(manifest, trialManifest) : null;
   const compare = (left, right) => left < right ? -1 : left > right ? 1 : 0;
   const rows = qc.accepted_indices.map(index => clean(records[index], manifest.study_id, pseudonymKey)).sort((a, b) => compare(a.session_id, b.session_id) || compare(a.trial_id, b.trial_id));
   const artifactHash = sha(rows.map(canonical).join('\n'));
-  const header = { type: 'trial-record-export', contract_version: CONTRACT_VERSION, ...(manifest?.evidence_class === undefined ? {} : { source_evidence_class: manifest.evidence_class }), artifact_hash: artifactHash, qc_report: { valid: qc.valid, total_count: Array.isArray(records) ? records.length : 0, accepted_count: qc.accepted_count, rejected_count: qc.rejected_records.length, rejected_records: qc.rejected_records, errors: qc.errors.filter(item => item.index === null) } };
+  const headerPayload = { type: 'trial-record-export', contract_version: CONTRACT_VERSION, ...(manifest?.evidence_class === undefined ? {} : { source_evidence_class: manifest.evidence_class }), ...(bridge?.valid ? { trial_manifest: { manifest_id: trialManifest.manifest_id, version: trialManifest.manifest_version, sha256: trialManifest.manifest_sha256, evidence_class: trialManifest.evidence_class } } : {}), artifact_hash: artifactHash, qc_report: { valid: qc.valid, total_count: Array.isArray(records) ? records.length : 0, accepted_count: qc.accepted_count, rejected_count: qc.rejected_records.length, rejected_records: qc.rejected_records, errors: qc.errors.filter(item => item.index === null) } };
+  const header = { ...headerPayload, envelope_hash: sha(canonical(headerPayload)) };
   return `${canonical(header)}\n${rows.map(canonical).join('\n')}${rows.length ? '\n' : ''}`;
 }
 
@@ -192,6 +212,7 @@ async function main(args) {
   if (!opts.input || !opts.manifest) throw new Error('Usage: node scripts/trial-record.mjs --input FILE --manifest FILE [--output FILE]');
   const records = JSON.parse(await readFile(opts.input, 'utf8'));
   const manifest = JSON.parse(await readFile(opts.manifest, 'utf8'));
+  const trialManifest = opts['trial-manifest'] ? JSON.parse(await readFile(opts['trial-manifest'], 'utf8')) : undefined;
   if (opts.output) {
     const inputPath = await realpath(opts.input);
     const manifestPath = await realpath(opts.manifest);
@@ -201,8 +222,8 @@ async function main(args) {
     if (outputPath === inputPath || outputPath === manifestPath) throw new Error('Output path must differ from input and manifest paths');
   }
   const pseudonymKey = process.env.TRIAL_RECORD_PSEUDONYM_KEY;
-  const qc = validateRecords(records, manifest, { pseudonymKey, requirePseudonymKey: true });
-  const output = exportJsonl(records, manifest, { pseudonymKey });
+  const qc = validateRecords(records, manifest, { pseudonymKey, requirePseudonymKey: true, trialManifest });
+  const output = exportJsonl(records, manifest, { pseudonymKey, trialManifest });
   if (opts.output) await writeFile(opts.output, output); else process.stdout.write(output);
   if (!qc.valid) process.exitCode = 1;
 }

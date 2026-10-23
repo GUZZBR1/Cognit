@@ -54,9 +54,30 @@ def _read_trial_record_export(path: Path, raw: bytes) -> tuple[dict[str, Any], s
     if (not isinstance(export, dict) or export.get("type") != "trial-record-export"
             or export.get("contract_version") != "trial-record-v1"):
         raise ValueError(f"{path}: expected a TrialRecord v1 export header")
+    if set(export) != {"type", "contract_version", "source_evidence_class", "trial_manifest", "artifact_hash", "qc_report", "envelope_hash"}:
+        raise ValueError(f"{path}: TrialRecord export header has missing or unsupported fields")
+    if not isinstance(export.get("envelope_hash"), str) or not re.fullmatch(r"[a-f0-9]{64}", export["envelope_hash"]):
+        raise ValueError(f"{path}: invalid TrialRecord export envelope_hash")
+    header_payload = {key: value for key, value in export.items() if key != "envelope_hash"}
+    canonical_header = json.dumps(header_payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    if hashlib.sha256(canonical_header.encode("utf-8")).hexdigest() != export["envelope_hash"]:
+        raise ValueError(f"{path}: TrialRecord export envelope_hash mismatch")
     source_evidence = export.get("source_evidence_class")
     if source_evidence is not None and not (isinstance(source_evidence, str) and source_evidence in {"SIMULATED", "OBSERVED", "REPLAYED"}):
         raise ValueError(f"{path}: invalid source_evidence_class")
+    trial_manifest = export.get("trial_manifest")
+    if trial_manifest is None:
+        raise ValueError(f"{path}: TrialRecord benchmark export must reference a validated canonical Trial Manifest")
+    if trial_manifest is not None and (
+            not isinstance(trial_manifest, dict)
+            or set(trial_manifest) != {"manifest_id", "version", "sha256", "evidence_class"}
+            or not isinstance(trial_manifest.get("manifest_id"), str) or not trial_manifest["manifest_id"]
+            or not isinstance(trial_manifest.get("version"), str) or trial_manifest["version"] != "1.0.0"
+            or not isinstance(trial_manifest.get("sha256"), str) or not re.fullmatch(r"[a-f0-9]{64}", trial_manifest["sha256"])
+            or trial_manifest.get("evidence_class") not in {"SIMULATED", "OBSERVED", "REPLAYED"}):
+        raise ValueError(f"{path}: invalid canonical Trial Manifest reference")
+    if trial_manifest is not None and source_evidence != trial_manifest["evidence_class"]:
+        raise ValueError(f"{path}: source evidence class differs from the canonical Trial Manifest")
     qc = export.get("qc_report")
     if (not isinstance(qc, dict) or qc.get("valid") is not True
             or qc.get("rejected_count") != 0
@@ -115,6 +136,7 @@ def _read_trial_record_export(path: Path, raw: bytes) -> tuple[dict[str, Any], s
             "contract_version": export["contract_version"],
             "artifact_hash": export["artifact_hash"],
             "qc_report": qc,
+            **({"trial_manifest": trial_manifest} if trial_manifest is not None else {}),
         },
         "attempts": attempts,
     }
@@ -457,9 +479,11 @@ def _primary_endpoints(datasets: dict[str, Path | None]) -> dict[str, Any]:
     automation_sessions: dict[tuple[str, str], dict[str, Any]] = {}
     for row in automated_rows:
         key = (row["group"], row["session_id"])
-        session = automation_sessions.setdefault(key, {"outcomes": [], "reach_observations": []})
+        session = automation_sessions.setdefault(key, {"outcomes": [], "reach_observations": [], "paired_observations": []})
         session["outcomes"].append(row["outcome"])
         session["reach_observations"].append(row["reached"])
+        if row["outcome"] != "UNKNOWN" and row["reached"] is not None:
+            session["paired_observations"].append((row["outcome"], row["reached"]))
     automation_sessions = {
         key: session for key, session in automation_sessions.items()
         if key not in oracle_automation_sessions
@@ -468,13 +492,17 @@ def _primary_endpoints(datasets: dict[str, Path | None]) -> dict[str, Any]:
         observations = session["reach_observations"]
         session["reached"] = True if any(value is True for value in observations) else False if observations and all(value is False for value in observations) else None
         session["policy_known"] = any(outcome != "UNKNOWN" for outcome in session["outcomes"])
-    escape_eligible = [session for session in automation_sessions.values() if session["policy_known"] and session["reached"] is not None]
-    escaped = sum(session["reached"] is True for session in escape_eligible)
+        paired_reach = [reached for _, reached in session["paired_observations"]]
+        session["paired_reached"] = True if any(value is True for value in paired_reach) else False if paired_reach and all(value is False for value in paired_reach) else None
+    escape_eligible = [session for session in automation_sessions.values() if session["paired_reached"] is not None]
+    escaped = sum(session["paired_reached"] is True for session in escape_eligible)
     unknown_policy_sessions = [session for session in automation_sessions.values() if not session["policy_known"]]
     unknown_reach_sessions = [session for session in automation_sessions.values() if session["reached"] is None]
-    policy_only_exclusions = sum(not session["policy_known"] and session["reached"] is not None for session in automation_sessions.values())
-    reach_only_exclusions = sum(session["policy_known"] and session["reached"] is None for session in automation_sessions.values())
-    both_unknown_exclusions = sum(not session["policy_known"] and session["reached"] is None for session in automation_sessions.values())
+    excluded_sessions = [session for session in automation_sessions.values() if session["paired_reached"] is None]
+    policy_only_exclusions = sum(not session["policy_known"] and session["reached"] is not None for session in excluded_sessions)
+    reach_only_exclusions = sum(session["policy_known"] and session["reached"] is None for session in excluded_sessions)
+    both_unknown_exclusions = sum(not session["policy_known"] and session["reached"] is None for session in excluded_sessions)
+    unpaired_policy_reach_exclusions = sum(session["policy_known"] and session["reached"] is not None for session in excluded_sessions)
     attempt_reach_counts = {
         "true": sum(row["reached"] is True for row in automated_rows),
         "false": sum(row["reached"] is False for row in automated_rows),
@@ -484,6 +512,11 @@ def _primary_endpoints(datasets: dict[str, Path | None]) -> dict[str, Any]:
         "true": sum(session["reached"] is True for session in automation_sessions.values()),
         "false": sum(session["reached"] is False for session in automation_sessions.values()),
         "unknown": len(unknown_reach_sessions),
+    }
+    paired_session_reach_counts = {
+        "true": sum(session["paired_reached"] is True for session in automation_sessions.values()),
+        "false": sum(session["paired_reached"] is False for session in automation_sessions.values()),
+        "unknown": sum(session["paired_reached"] is None for session in automation_sessions.values()),
     }
     completed_challenges = [row for row in challenge_rows if row["completed"] is True]
     known_challenges = [row for row in completed_challenges if isinstance(row["correct"], bool)]
@@ -499,16 +532,19 @@ def _primary_endpoints(datasets: dict[str, Path | None]) -> dict[str, Any]:
         "automation_escape_to_protected_action": {
             **rate(escaped, len(escape_eligible)),
             "unit": "session",
-            "numerator_definition": "sessions with at least one explicitly observed protected action reached",
-            "denominator_definition": "non-oracle automation sessions with a known policy outcome and a known tri-state session reach observation",
+            "numerator_definition": "sessions with a protected action explicitly reached on an attempt whose policy outcome is also known",
+            "denominator_definition": "non-oracle automation sessions with at least one same-attempt known policy/reach pair; only paired attempts contribute to the session escape state",
+            "pairing_rule": "policy and protected-action reach must both be known on the same attempt; paired attempts alone determine the session reach state",
             "reach_observations_by_attempt": attempt_reach_counts,
             "reach_states_by_session": session_reach_counts,
+            "paired_reach_states_by_session": paired_session_reach_counts,
             "unknown_policy_sessions": len(unknown_policy_sessions),
             "excluded_sessions": {
                 "oracle": len(oracle_automation_sessions),
                 "unknown_policy_only": policy_only_exclusions,
                 "unknown_reach_only": reach_only_exclusions,
                 "unknown_policy_and_reach": both_unknown_exclusions,
+                "known_policy_and_reach_without_same_attempt_pair": unpaired_policy_reach_exclusions,
             },
         },
         "challenge_completed": {**rate(len(completed_challenges), len(challenge_rows)), "unit": "challenge attempt", "numerator_definition": "completed is explicitly true", "denominator_definition": "records with an explicitly applied challenge"},

@@ -37,9 +37,9 @@ node examples/browser/mock-server.mjs
 
 Open `http://127.0.0.1:4173` and choose **Run mock flow**. The mock does not contact a real verification server.
 
-## Experimental lab
+## Experimental research tools
 
-This branch preserves the test suite and research tools excluded from `main`: controlled Playwright, Selenium, and Puppeteer runners; the human dataset pilot; AI Observer and classifier experiments; feature and session-signature prototypes; and benchmark/evaluation scripts. Browser attack runners are restricted to the local Cognit demo.
+Research tools and evaluation pipelines in this repository are not part of the production SDK: controlled Playwright, Selenium, and Puppeteer runners; human confirmation protocols; AI Observer and classifier experiments; feature and session-signature prototypes; and benchmark/evaluation scripts. Browser attack runners are restricted to the local Cognit demo. Their presence in `main` does not make them production capabilities or authorize human data collection.
 
 Install this branch's development dependencies with `npm install`. Run the suites with `npm test` and `npm run test:python`. The controlled browser runners are available as `npm run run:playwright`, `npm run attack-lab:selenium`, and `npm run attack-lab:puppeteer`.
 
@@ -70,7 +70,7 @@ Run the deterministic fixture policy and tests with `npm run visual-agent:mock`,
 
 ## TrialRecord v1
 
-Validate and export per-attempt experimental records with `npm run test:trial-record-v1` and `TRIAL_RECORD_PSEUDONYM_KEY='replace-with-a-secret-of-at-least-32-characters' node scripts/trial-record.mjs --input fixtures/trial-record-v1/records.json --manifest fixtures/trial-record-v1/manifest.json --output /tmp/cognit-trial-record-v1.jsonl`. The JSONL output is deterministic and hashed; provenance and UNKNOWN labels are preserved, and invalid/oracle records are reported rather than treated as human ground truth. See [the TrialRecord contract](docs/trial-record-v1.md).
+Validate and export per-attempt experimental records with `npm run test:trial-record-v1` and `TRIAL_RECORD_PSEUDONYM_KEY='replace-with-a-secret-of-at-least-32-characters' node scripts/trial-record.mjs --input fixtures/trial-record-v1/records.json --manifest fixtures/trial-record-v1/manifest.json --output /tmp/cognit-trial-record-v1.jsonl`. The JSONL output is deterministic and hashed; provenance and UNKNOWN labels are preserved, and invalid/oracle records are reported rather than treated as human ground truth. Benchmark exports additionally require `--trial-manifest` so the canonical Manifest and exact challenge membership are hash-bound. See [the TrialRecord contract](docs/trial-record-v1.md).
 
 ## Validation
 
@@ -79,6 +79,7 @@ Validate and export per-attempt experimental records with `npm run test:trial-re
 - Browser SDK: `npm run test:sdk`
 - Experimental Python: `npm run test:python`
 - Trial Manifest v1 fixtures and validator: `node scripts/trial-manifest.mjs` and `npm run test:trial-manifest` (see [the contract](docs/trial-manifest-v1.md))
+- Experimental pipeline report: `npm run test:experimental-pipeline` (fixture benchmark and independent, training-free dataset readiness)
 - Human confirmation pilot: `npm run test:human-confirmation` and `node examples/human-confirmation/main.js`
 - Scripted automation: `npm run test:scripted-automation`
-- Experimental pipeline integration targets `experiments/beta-lab`; production remains on `main`. TrialRecord v1 → QC/export → benchmark fixtures and protocol limits are documented in [experimental pipeline readiness](docs/experimental-pipeline-readiness-v1.md).
+- The experimental pipeline is maintained in `main` while remaining outside the production package boundary. TrialRecord v1 → QC/export → benchmark fixtures and protocol limits are documented in [experimental pipeline readiness](docs/experimental-pipeline-readiness-v1.md).

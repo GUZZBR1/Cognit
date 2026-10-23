@@ -2,7 +2,7 @@
   "manifest_id": "manifest-0000000000000001",
   "version": "1.0.0",
   "study_id": "fixture-study-v1",
-  "protocol_version": "trial-protocol-v1",
+  "protocol_version": "1.0.0",
   "challenge_ids": [
     "challenge-0000000000000001",
     "challenge-0000000000000002",
@@ -11,7 +11,16 @@
     "challenge-0000000000000005",
     "challenge-0000000000000006"
   ],
-  "config_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-  "sha256": "28c2c44c170210cc08dd1f6cdc7202a175db4073039dd0ab244a18abb371af85",
-  "evidence_class": "SIMULATED"
+  "config_hash": "a777d9e1d9000e566d5872f20696ad784ccaa3418599e5bb0084ad4fbc7b8b0e",
+  "sha256": "e707bea96d941e0a7e128a74ff68cbadb0e737d6e28e8cd0952eae37068f3c29",
+  "evidence_class": "SIMULATED",
+  "challenge_set": {
+    "id": "fixed-choice-set",
+    "version": "1.0.0"
+  },
+  "trial_manifest_ref": {
+    "manifest_id": "manifest-fixture-benchmark-v1",
+    "version": "1.0.0",
+    "sha256": "0258972a0738c0765b19991eecd5d59345c8ac46eccae2c0b0754acdb9dcf54a"
+  }
 }

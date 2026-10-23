@@ -84,9 +84,13 @@ export function validateManifest(manifest) {
     if (!['HUMAN', 'SCRIPTED_AUTOMATION', 'AI_AGENT', 'UNKNOWN'].includes(manifest.actor.type)) errors.push('$.actor.type: invalid actor type');
     nonEmpty(manifest.actor.version, '$.actor.version', errors);
   }
-  if (checkRecord(manifest.challenge_set, '$.challenge_set', ['id', 'version'], [], errors)) {
+  if (checkRecord(manifest.challenge_set, '$.challenge_set', ['id', 'version'], ['challenge_ids'], errors)) {
     nonEmpty(manifest.challenge_set.id, '$.challenge_set.id', errors);
     nonEmpty(manifest.challenge_set.version, '$.challenge_set.version', errors);
+    if (manifest.challenge_set.challenge_ids !== undefined) {
+      const ids = manifest.challenge_set.challenge_ids;
+      if (!Array.isArray(ids) || ids.length === 0 || ids.some(id => typeof id !== 'string' || !/^challenge-[a-f0-9]{16,64}$/.test(id)) || new Set(ids).size !== ids.length) errors.push('$.challenge_set.challenge_ids: expected unique opaque challenge IDs');
+    }
   }
   if (!(typeof manifest.seed === 'string' || (Number.isSafeInteger(manifest.seed)))) errors.push('$.seed: expected string or safe integer');
   if (!expectObject(manifest.config, '$.config', errors)) { /* diagnostic recorded */ }

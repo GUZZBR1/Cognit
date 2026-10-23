@@ -5,11 +5,16 @@ import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { readFile } from 'node:fs/promises';
 import { validateRecords, exportJsonl, canonical } from '../scripts/trial-record.mjs';
+import { hashManifest } from '../scripts/trial-manifest.mjs';
 
 const base = new URL('../fixtures/trial-record-v1/', import.meta.url);
 const records = JSON.parse(await readFile(new URL('records.json', base), 'utf8'));
 const manifest = JSON.parse(await readFile(new URL('manifest.json', base), 'utf8'));
 const invalid = JSON.parse(await readFile(new URL('invalid.json', base), 'utf8'));
+const benchmarkFixture = new URL('../fixtures/trial-record-benchmark-v1/', import.meta.url);
+const bridgeRecords = JSON.parse(await readFile(new URL('records.json', benchmarkFixture), 'utf8'));
+const bridgeManifest = JSON.parse(await readFile(new URL('manifest.json', benchmarkFixture), 'utf8'));
+const trialManifest = JSON.parse(await readFile(new URL('trial-manifest.json', benchmarkFixture), 'utf8'));
 const TEST_PSEUDONYM_KEY = 'fixture-test-key-at-least-32-characters';
 process.env.TRIAL_RECORD_PSEUDONYM_KEY = TEST_PSEUDONYM_KEY;
 
@@ -19,6 +24,28 @@ test('fixture set covers requested actor and evidence classes', () => {
   assert.ok(records.some(r => r.evidence_class === 'accessible'));
   assert.ok(records.some(r => r.oracle_access));
   assert.ok(records.every(r => !Object.hasOwn(r, 'participant_id')));
+});
+test('canonical Trial Manifest is hash-bound to TrialRecord challenge metadata and evidence class', () => {
+  const qc = validateRecords(bridgeRecords, bridgeManifest, { trialManifest });
+  assert.equal(qc.valid, true, JSON.stringify(qc.errors));
+  const output = JSON.parse(exportJsonl(bridgeRecords, bridgeManifest, { trialManifest }).split('\n')[0]);
+  assert.deepEqual(output.trial_manifest, {
+    manifest_id: trialManifest.manifest_id,
+    version: trialManifest.manifest_version,
+    sha256: trialManifest.manifest_sha256,
+    evidence_class: 'SIMULATED',
+  });
+
+  const changedManifest = structuredClone(trialManifest);
+  changedManifest.challenge_set.id = 'different-challenge-set';
+  assert.equal(validateRecords(bridgeRecords, bridgeManifest, { trialManifest: changedManifest }).valid, false);
+
+  const expandedMembership = structuredClone(trialManifest);
+  expandedMembership.challenge_set.challenge_ids.push(`challenge-${'f'.repeat(16)}`);
+  expandedMembership.manifest_sha256 = hashManifest(expandedMembership);
+  const tamperedQc = validateRecords(bridgeRecords, bridgeManifest, { trialManifest: expandedMembership });
+  assert.equal(tamperedQc.valid, false);
+  assert.ok(tamperedQc.errors.some(error => error.code === 'manifest_bridge'));
 });
 test('UNKNOWN stays unlabeled and risk/prediction/policy are observations only', () => {
   const unknown = records.find(r => r.actor === 'UNKNOWN');

@@ -3,8 +3,8 @@
 `schemas/trial-manifest-v1.schema.json` defines the run-level JSON contract. A
 manifest is identified by `manifest_id` and records the study and protocol,
 Cognit commit, RFC 3339 creation time, browser/OS, actor and version, challenge
-set, seed, configuration digest, accessible mode, evidence class, result, and
-observations. It describes the conditions claimed for one run; it does not
+set ID/version, optional exact challenge membership, seed, configuration digest,
+accessible mode, evidence class, result, and observations. It describes the conditions claimed for one run; it does not
 prove that the run occurred. `SIMULATED` is fixture evidence only.
 
 `manifest_sha256` binds the complete canonical document after omitting that
@@ -47,4 +47,4 @@ Validate an individual manifest and print its protocol, commit, and config hash:
 node scripts/trial-manifest.mjs path/to/manifest.json
 ```
 
-QC and TrialRecord export are separate contracts and are outside this manifest.
+QC and TrialRecord export remain separate contracts. The experimental pipeline requires exact `challenge_ids` membership in the canonical manifest, then links its export manifest by ID, version, and content digest; see [experimental pipeline readiness](experimental-pipeline-readiness-v1.md).

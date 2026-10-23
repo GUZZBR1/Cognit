@@ -25,6 +25,16 @@ test('manifest digest binds all manifest metadata and excludes only itself', asy
   assert.ok(validateManifest(manifest).errors.includes('$.manifest_sha256: does not match canonical manifest SHA-256'));
 });
 
+test('canonical manifest can bind exact challenge-set membership', async () => {
+  const manifest = await fixture('valid.json');
+  manifest.challenge_set.challenge_ids = [`challenge-${'1'.repeat(16)}`, `challenge-${'2'.repeat(16)}`];
+  manifest.manifest_sha256 = hashManifest(manifest);
+  assert.deepEqual(validateManifest(manifest), { valid: true, errors: [] });
+  manifest.challenge_set.challenge_ids.push(manifest.challenge_set.challenge_ids[0]);
+  manifest.manifest_sha256 = hashManifest(manifest);
+  assert.ok(validateManifest(manifest).errors.includes('$.challenge_set.challenge_ids: expected unique opaque challenge IDs'));
+});
+
 test('calendar-invalid timestamps are rejected', async () => {
   const manifest = await fixture('valid.json');
   manifest.created_at = '2026-02-31T12:00:00Z';

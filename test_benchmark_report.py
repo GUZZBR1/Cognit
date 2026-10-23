@@ -9,6 +9,12 @@ from pathlib import Path
 from benchmark_report import build_report
 
 
+def rehash_export_header(export):
+    payload = {key: value for key, value in export.items() if key != "envelope_hash"}
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    export["envelope_hash"] = hashlib.sha256(canonical.encode()).hexdigest()
+
+
 class BenchmarkReportTests(unittest.TestCase):
     def write_json(self, directory, name, document):
         path = Path(directory) / name
@@ -225,16 +231,52 @@ class BenchmarkReportTests(unittest.TestCase):
             path = self.write_json(directory, "automation.json", {"schema_version": 1, "session_id": "run", "attempts": attempts})
             endpoint = build_report({"selenium": path})["endpoints"]["automation_escape_to_protected_action"]
 
-        self.assertEqual((endpoint["numerator"], endpoint["denominator"]), (2, 3))
+        self.assertEqual((endpoint["numerator"], endpoint["denominator"]), (2, 4))
         self.assertEqual(endpoint["reach_observations_by_attempt"], {"true": 2, "false": 4, "unknown": 4})
         self.assertEqual(endpoint["reach_states_by_session"], {"true": 2, "false": 2, "unknown": 3})
+        self.assertEqual(endpoint["paired_reach_states_by_session"], {"true": 2, "false": 2, "unknown": 3})
         self.assertEqual(endpoint["unknown_policy_sessions"], 1)
         self.assertEqual(endpoint["excluded_sessions"], {
             "oracle": 1,
             "unknown_policy_only": 1,
-            "unknown_reach_only": 3,
+            "unknown_reach_only": 2,
             "unknown_policy_and_reach": 0,
+            "known_policy_and_reach_without_same_attempt_pair": 0,
         })
+
+    def test_escape_rate_requires_policy_and_reach_on_the_same_attempt(self):
+        with tempfile.TemporaryDirectory() as directory:
+            split_evidence = self.write_json(directory, "split.json", {
+                "schema_version": 1,
+                "session_id": "run",
+                "evidence_class": "SIMULATED",
+                "attempts": [
+                    {"session_id": "split", "policy_outcome": "UNKNOWN", "protected_action_reached": True},
+                    {"session_id": "split", "policy_outcome": "CHALLENGE"},
+                    {"session_id": "unknown-only", "policy_outcome": "UNKNOWN"},
+                ],
+            })
+            endpoint = build_report({"selenium": split_evidence})["endpoints"]["automation_escape_to_protected_action"]
+
+        self.assertEqual(endpoint["status"], "UNAVAILABLE")
+        self.assertIsNone(endpoint["numerator"])
+        self.assertIsNone(endpoint["denominator"])
+        self.assertEqual(endpoint["excluded_sessions"]["known_policy_and_reach_without_same_attempt_pair"], 1)
+        self.assertEqual(endpoint["reach_states_by_session"]["unknown"], 1)
+
+    def test_unpaired_positive_does_not_override_a_known_paired_negative(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = self.write_json(directory, "paired.json", {
+                "schema_version": 1,
+                "session_id": "run",
+                "attempts": [
+                    {"session_id": "s1", "policy_outcome": "CHALLENGE", "protected_action_reached": False},
+                    {"session_id": "s1", "policy_outcome": "UNKNOWN", "protected_action_reached": True},
+                ],
+            })
+            endpoint = build_report({"selenium": path})["endpoints"]["automation_escape_to_protected_action"]
+        self.assertEqual((endpoint["numerator"], endpoint["denominator"]), (0, 1))
+        self.assertEqual(endpoint["paired_reach_states_by_session"], {"true": 0, "false": 1, "unknown": 0})
 
     def test_escape_endpoint_rejects_malformed_reach_observation(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -255,6 +297,7 @@ class BenchmarkReportTests(unittest.TestCase):
         automated["oracle_access"] = "true"
         canonical_rows = "\n".join(json.dumps(row, sort_keys=True, separators=(",", ":"), ensure_ascii=False) for row in rows)
         export["artifact_hash"] = hashlib.sha256(canonical_rows.encode()).hexdigest()
+        rehash_export_header(export)
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "tampered.jsonl"
             path.write_text(json.dumps(export, sort_keys=True, separators=(",", ":")) + "\n" + canonical_rows + "\n", encoding="utf-8")
@@ -273,10 +316,23 @@ class BenchmarkReportTests(unittest.TestCase):
         export["artifact_hash"] = hashlib.sha256(canonical_rows.encode()).hexdigest()
         export["qc_report"]["accepted_count"] = len(rows)
         export["qc_report"]["total_count"] = len(rows)
+        rehash_export_header(export)
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "duplicate-trial.jsonl"
             path.write_text(json.dumps(export, sort_keys=True, separators=(",", ":")) + "\n" + canonical_rows + "\n", encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "duplicates trial_id"):
+                build_report({"playwright": path})
+
+    def test_jsonl_adapter_rejects_canonical_manifest_header_tampering(self):
+        fixture = Path(__file__).parent / "fixtures/trial-record-benchmark-v1/trial-record-export.jsonl"
+        header, *rows = fixture.read_text(encoding="utf-8").splitlines()
+        export = json.loads(header)
+        export["trial_manifest"]["manifest_id"] = "unrelated-manifest"
+        export["trial_manifest"]["sha256"] = "f" * 64
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "tampered-header.jsonl"
+            path.write_text(json.dumps(export, sort_keys=True, separators=(",", ":")) + "\n" + "\n".join(rows) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "envelope_hash mismatch"):
                 build_report({"playwright": path})
 
     def test_trial_record_jsonl_qc_to_report_is_deterministic_and_simulated(self):
@@ -293,7 +349,7 @@ class BenchmarkReportTests(unittest.TestCase):
             env = dict(os.environ, TRIAL_RECORD_PSEUDONYM_KEY="simulated-fixture-pseudonym-key-32-bytes")
             subprocess.run([
                 "node", str(repo / "scripts/trial-record.mjs"), "--input", str(records_path),
-                "--manifest", str(manifest_path), "--output", str(export_path),
+                "--manifest", str(manifest_path), "--trial-manifest", str(fixture / "trial-manifest.json"), "--output", str(export_path),
             ], check=True, cwd=repo, env=env, capture_output=True, text=True)
             report = build_report({"playwright": export_path})
             self.assertEqual(report, build_report({"playwright": export_path}))
@@ -305,17 +361,19 @@ class BenchmarkReportTests(unittest.TestCase):
 
         endpoint = report["endpoints"]["automation_escape_to_protected_action"]
         self.assertEqual(report["evidence_class"], "SIMULATED")
-        self.assertEqual((endpoint["numerator"], endpoint["denominator"]), (1, 2))
+        self.assertEqual((endpoint["numerator"], endpoint["denominator"]), (1, 3))
         self.assertEqual(endpoint["reach_states_by_session"], {"true": 1, "false": 2, "unknown": 3})
         self.assertEqual(endpoint["unknown_policy_sessions"], 1)
         self.assertEqual(endpoint["excluded_sessions"], {
             "oracle": 1,
             "unknown_policy_only": 1,
-            "unknown_reach_only": 3,
+            "unknown_reach_only": 2,
             "unknown_policy_and_reach": 0,
+            "known_policy_and_reach_without_same_attempt_pair": 0,
         })
         self.assertEqual(report["groups"]["playwright"]["sample"]["attempts"], 10)
         self.assertEqual(report["groups"]["playwright"]["trial_record_export"]["qc_report"]["accepted_count"], 11)
+        self.assertEqual(report["groups"]["playwright"]["trial_record_export"]["trial_manifest"]["manifest_id"], "manifest-fixture-benchmark-v1")
         self.assertEqual(report, json.loads((fixture / "benchmark-report.json").read_text(encoding="utf-8")))
 
     def test_invalid_schema_is_rejected(self):
