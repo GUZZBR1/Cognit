@@ -62,6 +62,12 @@ Run adapter checks with `npm run test:browser-baseline`. Its schema fixture is l
 
 Run controlled, reproducible behavior scenarios against local challenge fixtures with `npm run demo:scripted-automation -- --scenario steady --seed demo-1`. Use `--compare bursty` for descriptive summaries or `--config examples/scripted-automation/scenario.example.json` for custom parameter ranges. Records are labeled `SCRIPTED_AUTOMATION` and `SIMULATED`; the runner keeps aggregated cursor features and does not send data to production policy. See [the scenario guide](docs/scripted-automation.md).
 
+## Visual agent adapter (experimental)
+
+The visual adapter is screenshot-only: it gives an agent screenshot bytes and viewport dimensions, then accepts bounded coordinate clicks. It does not provide DOM, selectors, network requests, navigation, challenge fixtures, or expected answers. The Playwright port pins the page to the local `http://127.0.0.1:4173/visual-agent-demo` and allows only the demo document and local script. Other origins and unexpected browser capabilities are blocked. The existing SDK mock API exposes challenge data, so it is not the agent input surface.
+
+Run the deterministic fixture policy and tests with `npm run visual-agent:mock`, `npm run visual-agent:browser-mock`, and `npm run test:visual-agent`. Screenshots are not stored, actions contain coordinates only, sensitive configuration is redacted, and the outcome remains `UNKNOWN` until independent evidence exists. Mock commands are `SIMULATED`; real model execution is not wired yet.
+
 ## Validation
 
 - Root Go packages: `go test ./...`
