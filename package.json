@@ -5,8 +5,25 @@
   "engines": {
     "node": ">=22.12.0"
   },
+  "files": [
+    "browser-automation-signals.js",
+    "challenge_generator.py",
+    "challenge_mutations.mjs",
+    "decision_policy.py",
+    "docs/api/verification-v0.yaml",
+    "journey_tracker.py",
+    "risk_score.py",
+    "src/cognit/client-sdk.js",
+    "src/cognit/session-engine.ts",
+    "src/fixed-challenges.js",
+    "src/mouse-telemetry.mjs",
+    "src/reaction-time-collector.mjs",
+    "src/seeded-generator.js",
+    "verification_token.py"
+  ],
   "scripts": {
     "check": "node --experimental-strip-types --check src/cognit/session-engine.ts && node --experimental-strip-types --check src/cognit/history-profile-engine.ts && node --experimental-strip-types --check src/cognit/ad-campaign-schema.ts",
+    "check:production-boundary": "node scripts/check-production-boundary.mjs",
     "test": "node --experimental-strip-types --test",
     "report:session-signatures": "node scripts/report-session-signatures.mjs",
     "test:python": "python3 -m unittest discover -v",

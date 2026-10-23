@@ -22,3 +22,9 @@ This repository provides product components and an API contract; it does not inc
 This branch preserves the test suite and research tools excluded from `main`: controlled Playwright, Selenium, and Puppeteer runners; the human dataset pilot; AI Observer and classifier experiments; feature and session-signature prototypes; and benchmark/evaluation scripts. Browser attack runners are restricted to the local Cognit demo.
 
 Install this branch's development dependencies with `npm install`. Run the suites with `npm test` and `npm run test:python`. The controlled browser runners are available as `npm run run:playwright`, `npm run attack-lab:selenium`, and `npm run attack-lab:puppeteer`.
+
+## Production package boundary
+
+The npm `files` allowlist records the product files shipped from this repository. It follows the production tree on `main`; tests, Attack Lab runners, datasets, classifiers, and benchmark/evaluation tools remain available in this experimental checkout but are omitted from the package. Browser automation and ML tools belong in `devDependencies`; production dependencies must not include lab-only packages.
+
+Run `npm run check:production-boundary` before changing the allowlist or production dependencies. It verifies every allowlisted path exists, reports lab-only paths or dependencies with a non-zero exit status, and ignores lab files outside the package allowlist and lab-only development dependencies. `test/production-boundary.test.mjs` covers clean production files, forbidden files and dependencies, and the permitted experimental lab setup.
