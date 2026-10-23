@@ -9,6 +9,8 @@ const staticFiles = new Map([
   ['/', ['examples/browser/index.html', 'text/html; charset=utf-8']],
   ['/examples/browser/index.html', ['examples/browser/index.html', 'text/html; charset=utf-8']],
   ['/examples/browser/app.js', ['examples/browser/app.js', 'text/javascript; charset=utf-8']],
+  ['/visual-agent-demo', ['examples/browser/visual-agent-demo.html', 'text/html; charset=utf-8']],
+  ['/examples/browser/visual-agent-demo.js', ['examples/browser/visual-agent-demo.js', 'text/javascript; charset=utf-8']],
   ['/dist/client-sdk.js', ['dist/client-sdk.js', 'text/javascript; charset=utf-8']],
 ]);
 

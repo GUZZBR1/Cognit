@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "attemptId": "synthetic-two-point-attempt",
+  "points": [
+    { "x": 0, "y": 0, "t": 0 },
+    { "x": 3, "y": 4, "t": 16 }
+  ]
+}

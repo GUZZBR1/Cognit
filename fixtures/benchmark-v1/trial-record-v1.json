@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "evidence_class": "SIMULATED",
+  "trial_records": [
+    {
+      "record_version": "1.0.0",
+      "record_id": "fixture-record-001",
+      "manifest_id": "fixture-manifest-001",
+      "framework": "selenium",
+      "tool_version": "4.0.0",
+      "browser": "Chromium",
+      "browser_version": "130.0.0",
+      "cognit_commit": "0123456789abcdef0123456789abcdef01234567",
+      "protocol_version": "browser-baseline-protocol-1",
+      "config": {"challenge_count": 1, "mode": "fixed-demo"},
+      "config_sha256": "e4be18952f96e58eaa01f122a843a2cbc2a438e0eecccde39e1f27267da5e71f",
+      "seed": "issue-52-fixture-seed",
+      "session_id": "fixture-session-001",
+      "attempt_id": "fixture-attempt-001",
+      "challenge_id": "fixture-challenge-001",
+      "evidence_class": "SIMULATED",
+      "actor_class": "AUTOMATION_CONTROLLED",
+      "oracle_access": true,
+      "oracle_source": "fixture.expected_answer",
+      "observed_result": {"completed": true, "correct": true, "policy_outcome": "CHALLENGE"},
+      "perception_metric_eligible": false,
+      "target_source": "cognit-fixed-demo",
+      "target_origin": "http://127.0.0.1:4173"
+    }
+  ]
+}

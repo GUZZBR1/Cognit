@@ -1,0 +1,32 @@
+[
+  {
+    "contract_version": "trial-record-v1",
+    "trial_id": "trial-0000000000000007",
+    "actor": "HUMAN_CONFIRMED",
+    "label": "human",
+    "provenance": {
+      "source": "unknown",
+      "independent": false,
+      "valid": true
+    },
+    "manifest_ref": {
+      "manifest_id": "manifest-ffffffffffffffff",
+      "sha256": "bad",
+      "version": "1.0.0"
+    },
+    "challenge_ref": {
+      "challenge_id": "c",
+      "seed_ref": "s",
+      "config_hash": "bad"
+    },
+    "outcome": {
+      "status": "completed",
+      "duration_ms": -4
+    },
+    "started_at": "2025-01-02T00:00:00Z",
+    "ended_at": "2025-01-01T00:00:00Z",
+    "evidence_class": "human_report",
+    "oracle_access": false,
+    "session_id": "session-0000000000000007"
+  }
+]

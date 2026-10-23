@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 0,
+  "sessions": [
+    {
+      "name": "fixture-alpha",
+      "perception": { "duration_ms": 120, "correct": true },
+      "timing": { "durationMs": 120, "reactionTimeMs": 840 },
+      "behavior": { "features": { "distancePx": 42, "durationMs": 1200, "meanSpeedPxPerMs": 0.035, "pauseCount": 2, "directionChanges": 3, "speedVariation": 0.4, "trajectoryEntropyBits": 1.2 } },
+      "journey": { "sessionCount": 1, "succeededCount": 1, "failedCount": 0 },
+      "browser": { "navigator_webdriver": false, "playwright_globals": false, "selenium_globals": false, "puppeteer_global": false, "headless_chromium_user_agent": false, "empty_plugin_list": false, "empty_languages_list": false }
+    },
+    {
+      "name": "fixture-beta",
+      "perception": { "duration_ms": 120, "correct": true },
+      "timing": { "durationMs": 120, "reactionTimeMs": 910 },
+      "behavior": { "features": { "distancePx": 50, "durationMs": 1300, "meanSpeedPxPerMs": 0.038, "pauseCount": 1, "directionChanges": 4, "speedVariation": 0.5, "trajectoryEntropyBits": 1.5 } },
+      "browser": { "navigator_webdriver": false, "playwright_globals": false, "selenium_globals": false, "puppeteer_global": false, "headless_chromium_user_agent": false, "empty_plugin_list": false, "empty_languages_list": false }
+    },
+    {
+      "name": "fixture-gamma",
+      "perception": { "duration_ms": 100, "correct": false },
+      "timing": { "durationMs": 100, "reactionTimeMs": 540 },
+      "behavior": null,
+      "journey": null,
+      "browser": { "navigator_webdriver": true, "playwright_globals": false, "selenium_globals": false, "puppeteer_global": false, "headless_chromium_user_agent": true, "empty_plugin_list": false, "empty_languages_list": false }
+    }
+  ]
+}

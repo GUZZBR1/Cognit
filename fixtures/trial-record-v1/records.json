@@ -1,0 +1,194 @@
+[
+  {
+    "contract_version": "trial-record-v1",
+    "trial_id": "trial-0000000000000001",
+    "actor": "HUMAN_CONFIRMED",
+    "label": "human",
+    "provenance": {
+      "source": "independent-human-review",
+      "independent": true,
+      "valid": true
+    },
+    "manifest_ref": {
+      "manifest_id": "manifest-0000000000000001",
+      "sha256": "28c2c44c170210cc08dd1f6cdc7202a175db4073039dd0ab244a18abb371af85",
+      "version": "1.0.0"
+    },
+    "challenge_ref": {
+      "challenge_id": "challenge-0000000000000001",
+      "seed_ref": "seed-0000000000000001",
+      "config_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "outcome": {
+      "status": "completed",
+      "duration_ms": 1200,
+      "observations": {
+        "risk_score": 0.2,
+        "prediction": "human",
+        "policy": "allow"
+      }
+    },
+    "started_at": "2025-01-01T10:00:00.000Z",
+    "ended_at": "2025-01-01T10:00:01.200Z",
+    "evidence_class": "human_report",
+    "oracle_access": false,
+    "email": "private@example.com",
+    "raw_trajectory": [
+      [
+        1,
+        2
+      ]
+    ],
+    "session_id": "session-0000000000000001"
+  },
+  {
+    "contract_version": "trial-record-v1",
+    "trial_id": "trial-0000000000000002",
+    "actor": "AUTOMATION_CONTROL",
+    "label": "automation",
+    "provenance": {
+      "source": "controlled-automation",
+      "independent": true,
+      "valid": true
+    },
+    "manifest_ref": {
+      "manifest_id": "manifest-0000000000000001",
+      "sha256": "28c2c44c170210cc08dd1f6cdc7202a175db4073039dd0ab244a18abb371af85",
+      "version": "1.0.0"
+    },
+    "challenge_ref": {
+      "challenge_id": "challenge-0000000000000002",
+      "seed_ref": "seed-0000000000000002",
+      "config_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "outcome": {
+      "status": "completed",
+      "duration_ms": 800
+    },
+    "started_at": "2025-01-01T10:00:00Z",
+    "ended_at": "2025-01-01T10:00:00.800Z",
+    "evidence_class": "automation",
+    "oracle_access": false,
+    "session_id": "session-0000000000000002"
+  },
+  {
+    "contract_version": "trial-record-v1",
+    "trial_id": "trial-0000000000000003",
+    "actor": "AI_AGENT",
+    "label": "ai_agent",
+    "provenance": {
+      "source": "independent-agent-review",
+      "independent": true,
+      "valid": true
+    },
+    "manifest_ref": {
+      "manifest_id": "manifest-0000000000000001",
+      "sha256": "28c2c44c170210cc08dd1f6cdc7202a175db4073039dd0ab244a18abb371af85",
+      "version": "1.0.0"
+    },
+    "challenge_ref": {
+      "challenge_id": "challenge-0000000000000003",
+      "seed_ref": "seed-0000000000000003",
+      "config_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "outcome": {
+      "status": "completed",
+      "duration_ms": 500
+    },
+    "started_at": "2025-01-01T10:00:00Z",
+    "ended_at": "2025-01-01T10:00:00.500Z",
+    "evidence_class": "agent",
+    "oracle_access": false,
+    "session_id": "session-0000000000000003"
+  },
+  {
+    "contract_version": "trial-record-v1",
+    "trial_id": "trial-0000000000000004",
+    "actor": "UNKNOWN",
+    "label": null,
+    "provenance": {
+      "source": "unknown",
+      "independent": false,
+      "valid": true
+    },
+    "manifest_ref": {
+      "manifest_id": "manifest-0000000000000001",
+      "sha256": "28c2c44c170210cc08dd1f6cdc7202a175db4073039dd0ab244a18abb371af85",
+      "version": "1.0.0"
+    },
+    "challenge_ref": {
+      "challenge_id": "challenge-0000000000000004",
+      "seed_ref": "seed-0000000000000004",
+      "config_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "outcome": {
+      "status": "unknown",
+      "duration_ms": null
+    },
+    "started_at": "2025-01-01T10:00:00Z",
+    "ended_at": "2025-01-01T10:00:00Z",
+    "evidence_class": "unknown",
+    "oracle_access": false,
+    "session_id": "session-0000000000000004"
+  },
+  {
+    "contract_version": "trial-record-v1",
+    "trial_id": "trial-0000000000000005",
+    "actor": "HUMAN_CONFIRMED",
+    "label": "human",
+    "provenance": {
+      "source": "accessibility-review",
+      "independent": true,
+      "valid": true
+    },
+    "manifest_ref": {
+      "manifest_id": "manifest-0000000000000001",
+      "sha256": "28c2c44c170210cc08dd1f6cdc7202a175db4073039dd0ab244a18abb371af85",
+      "version": "1.0.0"
+    },
+    "challenge_ref": {
+      "challenge_id": "challenge-0000000000000005",
+      "seed_ref": "seed-0000000000000005",
+      "config_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "outcome": {
+      "status": "completed",
+      "duration_ms": 1100
+    },
+    "started_at": "2025-01-01T10:00:00Z",
+    "ended_at": "2025-01-01T10:00:01.100Z",
+    "evidence_class": "accessible",
+    "oracle_access": false,
+    "session_id": "session-0000000000000005"
+  },
+  {
+    "contract_version": "trial-record-v1",
+    "trial_id": "trial-0000000000000006",
+    "actor": "AUTOMATION_CONTROL",
+    "label": null,
+    "provenance": {
+      "source": "oracle-control",
+      "independent": false,
+      "valid": true
+    },
+    "manifest_ref": {
+      "manifest_id": "manifest-0000000000000001",
+      "sha256": "28c2c44c170210cc08dd1f6cdc7202a175db4073039dd0ab244a18abb371af85",
+      "version": "1.0.0"
+    },
+    "challenge_ref": {
+      "challenge_id": "challenge-0000000000000006",
+      "seed_ref": "seed-0000000000000006",
+      "config_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "outcome": {
+      "status": "completed",
+      "duration_ms": 1300
+    },
+    "started_at": "2025-01-01T10:00:00Z",
+    "ended_at": "2025-01-01T10:00:01.300Z",
+    "evidence_class": "oracle_assisted",
+    "oracle_access": true,
+    "session_id": "session-0000000000000006"
+  }
+]
