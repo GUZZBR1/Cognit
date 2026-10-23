@@ -10,6 +10,8 @@ Cognit is a human-presence verification product library with a browser SDK and a
 - `challenge/`, `journey/`, `go/session/`, `go/decisionpolicy/`, `risk_score/`, and `verificationtoken/` contain independently testable Go components.
 - `docs/api/verification-v0.yaml` defines the application-facing verification API contract.
 
+The experimental, in-memory human confirmation registry is documented in [docs/human-confirmation-v1.md](docs/human-confirmation-v1.md). It is lab-only, excluded from the production package, and marks every attempt `UNKNOWN` until an independent observer documents complete coverage of that exact attempt. Its example and fixtures are synthetic (`SIMULATED`).
+
 Keep signing secrets and final policy decisions on the server. Treat browser signals and risk assessments as uncertain evidence; use `UNKNOWN` when evidence is insufficient.
 
 ## Run the reference verification API
@@ -60,3 +62,4 @@ Open `http://127.0.0.1:4173` and choose **Run mock flow**. The mock does not con
 - Root Go packages: `go test ./...`
 - Nested Go modules: run `go test ./...` inside `go/session` and `go/decisionpolicy`.
 - Browser SDK: `npm run test:sdk`
+- Human confirmation pilot: `npm run test:human-dataset` and `node examples/human-confirmation/main.js`
