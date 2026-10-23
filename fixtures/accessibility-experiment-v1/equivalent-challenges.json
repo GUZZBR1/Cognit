@@ -1,0 +1,79 @@
+{
+  "evidence_class": "SIMULATED",
+  "sessions": [
+  {
+    "session_id": "sim-visual-001",
+    "challenge_id": "sequence-count-01",
+    "accessibility_mode": "VISUAL",
+    "completion_status": "COMPLETED",
+    "attempts": [
+      {
+        "attempt_id": "sim-visual-001-a1",
+        "challenge_id": "sequence-count-01",
+        "accessibility_mode": "VISUAL",
+        "attempt_number": 1,
+        "status": "SUBMITTED",
+        "challenge_result": "INCORRECT",
+        "duration_ms": 350
+      },
+      {
+        "attempt_id": "sim-visual-001-a2",
+        "challenge_id": "sequence-count-01",
+        "accessibility_mode": "VISUAL",
+        "attempt_number": 2,
+        "status": "SUBMITTED",
+        "challenge_result": "CORRECT",
+        "duration_ms": 720
+      }
+    ]
+  },
+  {
+    "session_id": "sim-accessible-001",
+    "challenge_id": "sequence-count-01",
+    "accessibility_mode": "ACCESSIBLE",
+    "completion_status": "COMPLETED",
+    "attempts": [
+      {
+        "attempt_id": "sim-accessible-001-a1",
+        "challenge_id": "sequence-count-01",
+        "accessibility_mode": "ACCESSIBLE",
+        "attempt_number": 1,
+        "status": "SUBMITTED",
+        "challenge_result": "CORRECT",
+        "duration_ms": null
+      }
+    ]
+  },
+  {
+    "session_id": "sim-accessible-002",
+    "challenge_id": "sequence-count-01",
+    "accessibility_mode": "ACCESSIBLE",
+    "completion_status": "ABANDONED",
+    "attempts": [
+      {
+        "attempt_id": "sim-accessible-002-a1",
+        "challenge_id": "sequence-count-01",
+        "accessibility_mode": "ACCESSIBLE",
+        "attempt_number": 1,
+        "status": "ABANDONED",
+        "challenge_result": "UNKNOWN",
+        "duration_ms": null
+      }
+    ]
+  },
+  {
+    "session_id": "sim-unknown-001",
+    "challenge_id": "sequence-count-01",
+    "completion_status": "UNKNOWN",
+    "attempts": [
+      {
+        "attempt_id": "sim-unknown-001-a1",
+        "challenge_id": "sequence-count-01",
+        "attempt_number": 1,
+        "status": "UNKNOWN",
+        "duration_ms": null
+      }
+    ]
+  }
+  ]
+}
