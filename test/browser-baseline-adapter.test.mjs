@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync, unlinkSync } from "node:fs";
+import { readFileSync, writeFileSync, unlinkSync, existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { test } from "node:test";
@@ -135,14 +135,30 @@ test("rejects structured attempt IDs instead of stringifying them", () => {
 });
 
 test("CLI writes a normalized export for the local TrialRecord fixture", () => {
-  const outputPath = new URL("../fixtures/browser-baseline/export-smoke.json", import.meta.url);
-  const result = spawnSync(process.execPath, [new URL("../scripts/browser-baseline-adapter.mjs", import.meta.url).pathname, "--framework", "playwright", "--input", new URL("../fixtures/browser-baseline/runner-output-v1.json", import.meta.url).pathname, "--context", new URL("../fixtures/browser-baseline/trial-record-v1.json", import.meta.url).pathname, "--output", outputPath.pathname], { encoding: "utf8" });
-  assert.equal(result.status, 0, result.stderr);
-  const exported = readFileSync(outputPath, "utf8");
-  const document = JSON.parse(exported);
-  assert.equal(document.record_version, "1.0.0");
-  assert.deepEqual(document.records, [expected]);
-  unlinkSync(outputPath);
+  for (const framework of ["playwright", "selenium", "puppeteer"]) {
+    const context = { ...expected, framework };
+    const runDocument = structuredClone(run);
+    if (framework === "selenium") Object.assign(runDocument.attempts[0], { tool: "selenium-webdriver", tool_version: context.tool_version, browser: context.browser, browser_version: context.browser_version });
+    if (framework === "puppeteer") Object.assign(runDocument.attempts[0], { tool: "puppeteer", tool_version: context.tool_version, browser: context.browser, browser_version: context.browser_version });
+    const stem = `${framework}-cli-smoke`;
+    const contextPath = new URL(`${stem}-context.json`, fixtureRoot);
+    const inputPath = new URL(`${stem}-input.json`, fixtureRoot);
+    const outputPath = new URL(`${stem}-output.json`, fixtureRoot);
+    try {
+      writeFileSync(contextPath, JSON.stringify(context));
+      writeFileSync(inputPath, JSON.stringify(runDocument));
+      const result = spawnSync(process.execPath, [new URL("../scripts/browser-baseline-adapter.mjs", import.meta.url).pathname, "--framework", framework, "--input", inputPath.pathname, "--context", contextPath.pathname, "--output", outputPath.pathname], { encoding: "utf8" });
+      assert.equal(result.status, 0, result.stderr);
+      const document = JSON.parse(readFileSync(outputPath, "utf8"));
+      assert.equal(document.record_version, "1.0.0");
+      assert.equal(document.records.length, 1);
+      assert.equal(document.records[0].framework, framework);
+      assert.equal(document.records[0].oracle_access, true);
+      assert.equal(document.records[0].perception_metric_eligible, false);
+    } finally {
+      for (const path of [contextPath, inputPath, outputPath]) if (existsSync(path)) unlinkSync(path);
+    }
+  }
 });
 
 test("CLI refuses to overwrite its runner input", () => {
