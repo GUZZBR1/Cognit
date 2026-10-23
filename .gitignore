@@ -1,5 +1,6 @@
 # Node.js dependencies and generated test reports
 node_modules/
+dist/
 coverage/
 .nyc_output/
 playwright-report/
