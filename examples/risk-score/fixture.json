@@ -1,0 +1,8 @@
+{
+  "perception": [
+    {"risk": 0.8, "confidence": 1},
+    {"risk": 0.4, "confidence": 1}
+  ],
+  "timing": {"risk": 0.6, "confidence": 0.8},
+  "traps": {"risk": 0.2, "confidence": 1}
+}

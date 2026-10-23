@@ -1,0 +1,32 @@
+[
+  {
+    "name": "group aggregation and missing groups",
+    "input": {"perception": [{"risk": 0.8, "confidence": 1}, {"risk": 0.4, "confidence": 1}], "timing": {"risk": 0.6, "confidence": 0.8}, "traps": {"risk": 0.2, "confidence": 1}},
+    "expected": {"risk_score": 46, "confidence": 0.9333, "state": "scored", "used_signals": ["perception", "timing", "traps"], "missing_signals": ["mouse", "browser", "journey"]}
+  },
+  {
+    "name": "invalid observations are ignored",
+    "input": {"perception": [{"risk": true, "confidence": 1}, {"risk": 0.4, "confidence": 1}, {"risk": 0.8, "confidence": "1"}], "timing": "invalid"},
+    "expected": {"risk_score": 0, "confidence": 0, "state": "inconclusive", "used_signals": ["perception"], "missing_signals": ["timing", "mouse", "browser", "journey", "traps"]}
+  },
+  {
+    "name": "insufficient confidence rounds to displayed threshold but stays inconclusive",
+    "input": {"perception": {"risk": 1, "confidence": 0.49996}, "timing": {"risk": 1, "confidence": 0.49996}, "mouse": {"risk": 1, "confidence": 0.49996}},
+    "expected": {"risk_score": 0, "confidence": 0.5, "state": "inconclusive", "used_signals": ["perception", "timing", "mouse"], "missing_signals": ["browser", "journey", "traps"]}
+  },
+  {
+    "name": "Python ties-to-even score rounding",
+    "input": {"perception": {"risk": 0.5, "confidence": 1}, "timing": {"risk": 0.51, "confidence": 1}},
+    "expected": {"risk_score": 50, "confidence": 0.6667, "state": "scored", "used_signals": ["perception", "timing"], "missing_signals": ["mouse", "browser", "journey", "traps"]}
+  },
+  {
+    "name": "two groups breadth penalty",
+    "input": {"perception": {"risk": 0.3, "confidence": 0.75}, "timing": {"risk": 0.7, "confidence": 0.75}},
+    "expected": {"risk_score": 50, "confidence": 0.5, "state": "scored", "used_signals": ["perception", "timing"], "missing_signals": ["mouse", "browser", "journey", "traps"]}
+  },
+  {
+    "name": "Python decimal confidence rounding",
+    "input": {"perception": {"risk": 0.5, "confidence": 0.00005}, "timing": {"risk": 0.5, "confidence": 0.00005}, "mouse": {"risk": 0.5, "confidence": 0.00005}},
+    "expected": {"risk_score": 0, "confidence": 0.0001, "state": "inconclusive", "used_signals": ["perception", "timing", "mouse"], "missing_signals": ["browser", "journey", "traps"]}
+  }
+]

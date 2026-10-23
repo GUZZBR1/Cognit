@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cognit browser SDK mock</title>
+    <style>
+      body { max-width: 44rem; margin: 3rem auto; padding: 0 1rem; font: 16px/1.5 system-ui, sans-serif; }
+      button { padding: .65rem 1rem; font: inherit; }
+      pre { min-height: 8rem; padding: 1rem; overflow: auto; background: #f3f4f6; }
+    </style>
+  </head>
+  <body>
+    <h1>Cognit browser SDK</h1>
+    <p>This demo runs a session, requests a challenge, submits telemetry and a result, then checks verification against the local mock API.</p>
+    <button id="run" type="button">Run mock flow</button>
+    <pre id="output" aria-live="polite">Ready.</pre>
+    <script type="module" src="/examples/browser/app.js"></script>
+  </body>
+</html>
