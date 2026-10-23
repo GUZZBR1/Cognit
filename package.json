@@ -29,7 +29,9 @@
     "attack-lab:selenium": "node attack-lab/selenium.js",
     "attack-lab:puppeteer": "node attack-lab/puppeteer.js",
     "export:browser-baseline": "node scripts/browser-baseline-adapter.mjs",
-    "test:browser-baseline": "node --test test/browser-baseline-adapter.test.mjs"
+    "test:browser-baseline": "node --test test/browser-baseline-adapter.test.mjs",
+    "test:scripted-automation": "node --test test/scripted-automation/*.test.mjs",
+    "demo:scripted-automation": "node examples/scripted-automation/run.mjs"
   },
   "devDependencies": {
     "playwright": "^1.64.1",

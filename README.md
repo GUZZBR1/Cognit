@@ -58,6 +58,10 @@ Use `--framework selenium` or `--framework puppeteer` for those runner outputs. 
 
 Run adapter checks with `npm run test:browser-baseline`. Its schema fixture is local to the adapter and does not define the canonical TrialRecord contract.
 
+## Scripted automation scenarios
+
+Run controlled, reproducible behavior scenarios against local challenge fixtures with `npm run demo:scripted-automation -- --scenario steady --seed demo-1`. Use `--compare bursty` for descriptive summaries or `--config examples/scripted-automation/scenario.example.json` for custom parameter ranges. Records are labeled `SCRIPTED_AUTOMATION` and `SIMULATED`; the runner keeps aggregated cursor features and does not send data to production policy. See [the scenario guide](docs/scripted-automation.md).
+
 ## Validation
 
 - Root Go packages: `go test ./...`
@@ -66,3 +70,4 @@ Run adapter checks with `npm run test:browser-baseline`. Its schema fixture is l
 - Experimental Python: `npm run test:python`
 - Trial Manifest v1 fixtures and validator: `node scripts/trial-manifest.mjs` and `npm run test:trial-manifest` (see [the contract](docs/trial-manifest-v1.md))
 - Human confirmation pilot: `npm run test:human-confirmation` and `node examples/human-confirmation/main.js`
+- Scripted automation: `npm run test:scripted-automation`
