@@ -55,8 +55,13 @@ node examples/browser/mock-server.mjs
 
 Open `http://127.0.0.1:4173` and choose **Run mock flow**. The mock does not contact a real verification server.
 
+## Scripted automation scenarios
+
+Run controlled, reproducible behavior scenarios against local challenge fixtures with `npm run demo:scripted-automation -- --scenario steady --seed demo-1`. Use `--compare bursty` for descriptive summaries or `--config examples/scripted-automation/scenario.example.json` for custom parameter ranges. Records are labeled `SCRIPTED_AUTOMATION` and `SIMULATED`; the runner keeps aggregated cursor features and does not send data to production policy. See [the scenario guide](docs/scripted-automation.md).
+
 ## Validation
 
 - Root Go packages: `go test ./...`
 - Nested Go modules: run `go test ./...` inside `go/session` and `go/decisionpolicy`.
 - Browser SDK: `npm run test:sdk`
+- Scripted automation: `npm run test:scripted-automation`
