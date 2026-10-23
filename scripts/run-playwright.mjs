@@ -10,7 +10,7 @@ import { aggregateMouseAttempt } from "../src/mouse-telemetry.mjs";
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const MIME_TYPES = { ".css": "text/css; charset=utf-8", ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".json": "application/json; charset=utf-8", ".mjs": "text/javascript; charset=utf-8" };
 const SCHEMA_VERSION = 1;
-const ALLOWED_FILES = new Set(["index.html", "styles.css", "src/app.js", "src/fixed-challenges.js", "src/mouse-telemetry.mjs"]);
+const ALLOWED_FILES = new Set(["index.html", "styles.css", "src/app.js", "src/fixed-challenges.js", "src/mouse-telemetry.mjs", "src/human-dataset.js", "src/operational-metrics.js"]);
 
 export function parseArgs(args) {
   const options = { output: "playwright-results.json", repeat: 1, duration: 100 };
@@ -29,7 +29,14 @@ export function parseArgs(args) {
 }
 
 export function buildRunDocument(sessionId, attempts, startedAt) {
-  return { schema_version: SCHEMA_VERSION, session_id: sessionId, started_at: startedAt, source: "cognit-fixed-demo", attempts };
+  return { schema_version: SCHEMA_VERSION, session_id: sessionId, started_at: startedAt, source: "cognit-fixed-demo", evidence_class: "SIMULATED", human_consent: "NOT_ESTABLISHED", attempts };
+}
+
+export async function advanceToSetup(page) {
+  // This automated UI action only unlocks the demo flow; it is not human consent.
+  await page.locator("#consent").check();
+  await page.locator("#begin-study").click();
+  await page.locator("#setup-panel").waitFor({ state: "visible" });
 }
 
 export function isAllowedRequest(url, origin) {
@@ -79,6 +86,7 @@ async function run(options) {
       window.addEventListener("mousemove", (event) => window.__cognitMousePoints.push({ x: event.clientX, y: event.clientY, t: performance.now() }), { passive: true });
     });
     await page.goto(`${origin}/`, { waitUntil: "load" });
+    await advanceToSetup(page);
     const sessionId = randomUUID();
     const attempts = [];
     for (let repeat = 0; repeat < options.repeat; repeat += 1) {

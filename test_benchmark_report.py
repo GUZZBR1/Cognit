@@ -304,6 +304,49 @@ class BenchmarkReportTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "actor/evidence/oracle"):
                 build_report({"playwright": path})
 
+    def test_jsonl_hash_accepts_javascript_number_spelling_without_reserializing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repo = Path(__file__).parent
+            fixture = repo / "fixtures/trial-record-benchmark-v1"
+            records = json.loads((fixture / "records.json").read_text(encoding="utf-8"))
+            records[0]["outcome"]["observations"]["risk_score"] = 1e-7
+            records_path = self.write_json(directory, "records.json", records)
+            manifest_path = fixture / "manifest.json"
+            path = Path(directory) / "javascript-number.jsonl"
+            env = dict(os.environ, TRIAL_RECORD_PSEUDONYM_KEY="simulated-fixture-pseudonym-key-32-bytes")
+            subprocess.run([
+                "node", str(repo / "scripts/trial-record.mjs"), "--input", str(records_path),
+                "--manifest", str(manifest_path), "--trial-manifest", str(fixture / "trial-manifest.json"),
+                "--output", str(path),
+            ], check=True, cwd=repo, env=env, capture_output=True, text=True)
+            self.assertIn(b"1e-7", path.read_bytes())
+            report = build_report({"playwright": path})
+
+        self.assertEqual(report["groups"]["playwright"]["status"], "AVAILABLE")
+
+    def test_raw_runner_authored_answer_disclosure_excludes_oracle_data(self):
+        for disclosed_key in ("expected_answer", "authored_answer"):
+            with self.subTest(disclosed_key=disclosed_key), tempfile.TemporaryDirectory() as directory:
+                path = self.write_json(directory, "runner.json", {
+                    "schema_version": 1,
+                    "session_id": "session-with-authored-answer",
+                    "attempts": [{
+                        "session_id": "session-with-authored-answer",
+                        "actor_class": "AUTOMATION_CONTROLLED",
+                        "ground_truth": {"type": "authored_answer", disclosed_key: "blue"},
+                        "policy_outcome": "CHALLENGE",
+                        "protected_action_reached": True,
+                    }],
+                })
+                report = build_report({"playwright": path})
+
+            group = report["groups"]["playwright"]
+            endpoint = report["endpoints"]["automation_escape_to_protected_action"]
+            self.assertEqual(group["status"], "UNAVAILABLE")
+            self.assertEqual(group["reason"], "no_non_oracle_eligible_records")
+            self.assertIsNone(endpoint["denominator"])
+            self.assertEqual(endpoint["excluded_sessions"]["oracle"], 1)
+
     def test_jsonl_adapter_rejects_duplicate_attempt_ids_across_sessions(self):
         fixture = Path(__file__).parent / "fixtures/trial-record-benchmark-v1/trial-record-export.jsonl"
         header, *encoded_rows = fixture.read_text(encoding="utf-8").splitlines()

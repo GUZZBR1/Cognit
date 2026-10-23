@@ -45,10 +45,17 @@ def _read_dataset(path: Path) -> tuple[dict[str, Any], str]:
 def _read_trial_record_export(path: Path, raw: bytes) -> tuple[dict[str, Any], str]:
     """Read the validated TrialRecord v1 JSONL export without filling gaps."""
     try:
-        lines = raw.decode("utf-8").splitlines()
-        header, *encoded_rows = lines
-        export = json.loads(header)
-        rows = [json.loads(line) for line in encoded_rows]
+        encoded_lines = raw.split(b"\n")
+        if encoded_lines[-1] == b"":
+            encoded_lines.pop()
+        if not encoded_lines:
+            raise ValueError("missing export header")
+        header_line = encoded_lines[0].removesuffix(b"\r")
+        row_lines = [line.removesuffix(b"\r") for line in encoded_lines[1:]]
+        if any(not line for line in row_lines):
+            raise ValueError("blank TrialRecord row")
+        export = json.loads(header_line.decode("utf-8"))
+        rows = [json.loads(line.decode("utf-8")) for line in row_lines]
     except (UnicodeDecodeError, ValueError, json.JSONDecodeError) as error:
         raise ValueError(f"{path}: invalid TrialRecord v1 JSONL export: {error}") from error
     if (not isinstance(export, dict) or export.get("type") != "trial-record-export"
@@ -85,8 +92,11 @@ def _read_trial_record_export(path: Path, raw: bytes) -> tuple[dict[str, Any], s
             or qc.get("total_count") != len(rows)
             or qc.get("rejected_records") != []):
         raise ValueError(f"{path}: TrialRecord export must have a complete, valid QC report")
-    canonical_rows = "\n".join(json.dumps(row, sort_keys=True, separators=(",", ":"), ensure_ascii=False) for row in rows)
-    if hashlib.sha256(canonical_rows.encode("utf-8")).hexdigest() != export.get("artifact_hash"):
+    # The exporter hashes its exact canonical JSON row bytes. Hash the row
+    # lines as written instead of re-serializing parsed numbers: JavaScript and
+    # Python can spell the same JSON number differently (for example 1e-7).
+    row_artifact = b"\n".join(row_lines)
+    if hashlib.sha256(row_artifact).hexdigest() != export.get("artifact_hash"):
         raise ValueError(f"{path}: TrialRecord export artifact_hash mismatch")
 
     attempts = []
@@ -329,7 +339,22 @@ def _cluster_id(group: str, document: dict[str, Any], record: dict[str, Any]) ->
 
 
 def _oracle_assisted(record: dict[str, Any]) -> bool:
-    return record.get("oracle_access") is True or record.get("perception_metric_eligible") is False
+    ground_truth = record.get("ground_truth")
+    disclosed_authored_answer = (
+        isinstance(ground_truth, dict)
+        and ground_truth.get("type") == "authored_answer"
+        and any(
+            key in ground_truth
+            and ground_truth[key] is not None
+            and not (isinstance(ground_truth[key], str) and not ground_truth[key].strip())
+            for key in ("authored_answer", "expected_answer")
+        )
+    )
+    return (
+        record.get("oracle_access") is True
+        or record.get("perception_metric_eligible") is False
+        or disclosed_authored_answer
+    )
 
 
 def _outcome(record: dict[str, Any]) -> str:
