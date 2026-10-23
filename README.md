@@ -60,3 +60,4 @@ Open `http://127.0.0.1:4173` and choose **Run mock flow**. The mock does not con
 - Root Go packages: `go test ./...`
 - Nested Go modules: run `go test ./...` inside `go/session` and `go/decisionpolicy`.
 - Browser SDK: `npm run test:sdk`
+- Experimental TrialRecord v1 QC/export: `npm run test:trial-record-v1`; see [the contract and CLI guide](docs/trial-record-v1.md).

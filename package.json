@@ -18,6 +18,8 @@
   "scripts": {
     "build:sdk": "tsc -p tsconfig.sdk.json",
     "test:sdk": "npm run build:sdk && node --test test/sdk/client-sdk.test.js",
+    "test:trial-record-v1": "node --test tests/trial-record-v1.test.mjs",
+    "trial-record:v1": "node scripts/trial-record.mjs",
     "check:production-boundary": "npm run build:sdk && node scripts/check-production-boundary.mjs"
   },
   "devDependencies": {
