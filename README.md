@@ -60,3 +60,4 @@ Open `http://127.0.0.1:4173` and choose **Run mock flow**. The mock does not con
 - Root Go packages: `go test ./...`
 - Nested Go modules: run `go test ./...` inside `go/session` and `go/decisionpolicy`.
 - Browser SDK: `npm run test:sdk`
+- Trial Manifest v1 fixtures and validator: `node scripts/trial-manifest.mjs` and `npm run test:trial-manifest` (see [the contract](docs/trial-manifest-v1.md))
