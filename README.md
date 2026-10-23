@@ -11,6 +11,7 @@ Cognit is a human-presence verification product library. This repository contain
 - `src/cognit/session-engine.ts` and `journey_tracker.py` provide session state and an event timeline.
 - `risk_score.py` combines available evidence into an advisory score. `decision_policy.py` maps it to configured `ALLOW`, `CHALLENGE`, `RESTRICT`, `BLOCK`, or `UNKNOWN` outcomes.
 - `verification_token.py` issues and validates server-side, action-bound, expiring, one-use signed tokens.
+- `verificationtoken/` provides the equivalent Go token service; see [the Go token guide](docs/go-verification-token.md).
 - `docs/api/verification-v0.yaml` defines the application-facing verification API contract.
 
 Keep signing secrets and final policy decisions on the server. Supply token claims and expected bindings from trusted server-side context. Treat risk scores and browser signals as uncertain evidence; they do not establish identity or intent. Use `UNKNOWN` when evidence is missing or insufficient.
