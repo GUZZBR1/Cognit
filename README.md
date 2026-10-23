@@ -43,6 +43,21 @@ This branch preserves the test suite and research tools excluded from `main`: co
 
 Install this branch's development dependencies with `npm install`. Run the suites with `npm test` and `npm run test:python`. The controlled browser runners are available as `npm run run:playwright`, `npm run attack-lab:selenium`, and `npm run attack-lab:puppeteer`.
 
+## Experimental browser baseline exports
+
+The existing Playwright, Selenium, and Puppeteer runners execute only the local `cognit-fixed-demo`. Normalize one of their JSON exports without launching a browser:
+
+```sh
+npm run export:browser-baseline -- --framework playwright \
+  --input /path/to/playwright-results.json \
+  --context /path/to/trial-record-v1.json \
+  --output browser-baseline-results.json
+```
+
+Use `--framework selenium` or `--framework puppeteer` for those runner outputs. The context identifies TrialRecord version `1.0.0`, framework, manifest ID, Cognit commit, protocol version, canonical config and its SHA-256, seed, tool/browser versions, and the controlled demo's loopback origin. The adapter rejects non-loopback targets and requires authored-answer disclosure. The legacy runner output does not attest the observed URL, so `target_origin` is declared context, not execution attestation. It emits `SIMULATED`/`AUTOMATION_CONTROLLED` records with `oracle_access: true`; these are not perception evidence or human ground truth.
+
+Run adapter checks with `npm run test:browser-baseline`. Its schema fixture is local to the adapter and does not define the canonical TrialRecord contract.
+
 ## Validation
 
 - Root Go packages: `go test ./...`

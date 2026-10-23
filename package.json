@@ -27,7 +27,9 @@
     "report:session-signatures": "node scripts/report-session-signatures.mjs",
     "run:playwright": "node scripts/run-playwright.mjs",
     "attack-lab:selenium": "node attack-lab/selenium.js",
-    "attack-lab:puppeteer": "node attack-lab/puppeteer.js"
+    "attack-lab:puppeteer": "node attack-lab/puppeteer.js",
+    "export:browser-baseline": "node scripts/browser-baseline-adapter.mjs",
+    "test:browser-baseline": "node --test test/browser-baseline-adapter.test.mjs"
   },
   "devDependencies": {
     "playwright": "^1.64.1",
